@@ -5,6 +5,9 @@ struct LibraryView: View {
     @State private var expandedNotebookIDs = Set<Notebook.ID>()
     @State private var showsSettings = false
     @State private var columnVisibility = NavigationSplitViewVisibility.all
+    @State private var editingNotebookID: Notebook.ID?
+    @State private var notebookTitleDraft = ""
+    @FocusState private var focusedNotebookID: Notebook.ID?
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -15,6 +18,13 @@ struct LibraryView: View {
         .onAppear {
             if let firstID = library.notebooks.first?.id {
                 expandedNotebookIDs.insert(firstID)
+            }
+            let storagePath = UserDefaults.standard.string(
+                forKey: "notesFolderPath"
+            )?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if storagePath?.isEmpty != false
+                || !FileManager.default.fileExists(atPath: storagePath ?? "") {
+                showsSettings = true
             }
         }
         .sheet(isPresented: $showsSettings) {
@@ -44,11 +54,29 @@ struct LibraryView: View {
                         .padding(.leading, 4)
                     } label: {
                         Label {
-                            Text(notebook.title)
-                                .foregroundStyle(
-                                    notebook.colorHex.flatMap(Color.init(hex:))
-                                        ?? Color.primary
+                            if editingNotebookID == notebook.id {
+                                TextField(
+                                    tr("Nome do notebook"),
+                                    text: $notebookTitleDraft
                                 )
+                                .textFieldStyle(.plain)
+                                .focused($focusedNotebookID, equals: notebook.id)
+                                .onSubmit {
+                                    finishRenamingNotebook(notebook)
+                                }
+                                .onChange(of: focusedNotebookID) { _, focusedID in
+                                    if focusedID != notebook.id,
+                                       editingNotebookID == notebook.id {
+                                        finishRenamingNotebook(notebook)
+                                    }
+                                }
+                            } else {
+                                Text(notebook.title)
+                                    .foregroundStyle(
+                                        notebook.colorHex.flatMap(Color.init(hex:))
+                                            ?? Color.primary
+                                    )
+                            }
                         } icon: {
                             Image(systemName: "book.closed.fill")
                                 .foregroundStyle(
@@ -59,10 +87,20 @@ struct LibraryView: View {
                             .fontWeight(.medium)
                             .contentShape(Rectangle())
                             .onTapGesture {
+                                guard editingNotebookID != notebook.id else { return }
                                 library.selectNotebook(notebook.id)
                                 toggleExpansion(notebook.id)
                             }
+                            .onTapGesture(count: 2) {
+                                beginRenamingNotebook(notebook)
+                            }
                             .contextMenu {
+                                Button {
+                                    beginRenamingNotebook(notebook)
+                                } label: {
+                                    Label(tr("Renomear notebook"), systemImage: "pencil")
+                                }
+
                                 Menu {
                                     ForEach(noteColors) { color in
                                         Button {
@@ -102,7 +140,15 @@ struct LibraryView: View {
                     }
                     .buttonStyle(.plain)
                     .help(tr("Configurações"))
-                    Button(action: library.addNotebook) {
+                    Button {
+                        let notebookID = library.addNotebook()
+                        expandedNotebookIDs.insert(notebookID)
+                        editingNotebookID = notebookID
+                        notebookTitleDraft = tr("Novo notebook")
+                        DispatchQueue.main.async {
+                            focusedNotebookID = notebookID
+                        }
+                    } label: {
                         Image(systemName: "plus")
                     }
                     .buttonStyle(.plain)
@@ -187,6 +233,26 @@ struct LibraryView: View {
             expandedNotebookIDs.remove(id)
         } else {
             expandedNotebookIDs.insert(id)
+        }
+    }
+
+    private func beginRenamingNotebook(_ notebook: Notebook) {
+        editingNotebookID = notebook.id
+        notebookTitleDraft = notebook.title
+        DispatchQueue.main.async {
+            focusedNotebookID = notebook.id
+        }
+    }
+
+    private func finishRenamingNotebook(_ notebook: Notebook) {
+        if library.renameNotebook(notebook.id, to: notebookTitleDraft) {
+            editingNotebookID = nil
+            focusedNotebookID = nil
+        } else {
+            notebookTitleDraft = notebook.title
+            DispatchQueue.main.async {
+                focusedNotebookID = notebook.id
+            }
         }
     }
 }

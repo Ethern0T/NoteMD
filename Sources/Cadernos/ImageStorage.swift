@@ -2,6 +2,53 @@ import AppKit
 import Foundation
 
 extension LibraryStore {
+    @discardableResult
+    func renameNotebook(_ notebookID: Notebook.ID, to proposedTitle: String) -> Bool {
+        guard let notebook = notebooks.first(where: { $0.id == notebookID }) else {
+            return false
+        }
+
+        let title = proposedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return false }
+
+        let desiredFolderName = safeFilename(title)
+        if let rootURL = storageRootURL,
+           let previousFolderName = notebook.storageFolderName,
+           previousFolderName != desiredFolderName {
+            let previousURL = rootURL.appendingPathComponent(
+                previousFolderName,
+                isDirectory: true
+            )
+            let desiredURL = rootURL.appendingPathComponent(
+                desiredFolderName,
+                isDirectory: true
+            )
+
+            do {
+                if FileManager.default.fileExists(atPath: desiredURL.path) {
+                    showStorageError(
+                        title: "Já existe um notebook com este nome",
+                        message: "Escolha outro nome."
+                    )
+                    return false
+                }
+                if FileManager.default.fileExists(atPath: previousURL.path) {
+                    try FileManager.default.moveItem(at: previousURL, to: desiredURL)
+                }
+                markNotebookStored(notebookID, folderName: desiredFolderName)
+            } catch {
+                showStorageError(
+                    title: "Não foi possível renomear o notebook",
+                    message: error.localizedDescription
+                )
+                return false
+            }
+        }
+
+        updateNotebookTitle(title, notebookID: notebookID)
+        return true
+    }
+
     func setNotebookColor(_ colorHex: String?, notebookID: Notebook.ID) {
         guard let notebook = notebooks.first(where: { $0.id == notebookID }) else {
             return

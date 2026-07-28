@@ -71,10 +71,12 @@ final class LibraryStore: ObservableObject {
         dirtyNoteIDs.insert(notebooks[notebookIndex].notes[noteIndex].id)
     }
 
-    func addNotebook() {
+    @discardableResult
+    func addNotebook() -> Notebook.ID {
         let notebook = Notebook(title: "Novo notebook")
         notebooks.append(notebook)
         selectedNotebookID = notebook.id
+        return notebook.id
     }
 
     func addNote(to notebookID: Notebook.ID) {
@@ -159,6 +161,13 @@ final class LibraryStore: ObservableObject {
             return
         }
         notebooks[index].colorHex = colorHex
+    }
+
+    func updateNotebookTitle(_ title: String, notebookID: Notebook.ID) {
+        guard let index = notebooks.firstIndex(where: { $0.id == notebookID }) else {
+            return
+        }
+        notebooks[index].title = title
     }
 
     func markNotebookStored(_ notebookID: Notebook.ID, folderName: String) {
