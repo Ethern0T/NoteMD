@@ -96,3 +96,11 @@ conta e não envia o conteúdo das notas para servidores externos.
 
 O NoteMD é uma aplicação nativa para macOS, construída em Swift com SwiftUI e
 AppKit.
+
+## Screenshots
+
+<img width="1540" height="934" alt="image" src="https://github.com/user-attachments/assets/2adf802f-70b3-4fa1-8bdc-882ee9656e74" />
+
+<img width="1540" height="934" alt="image" src="https://github.com/user-attachments/assets/fa1b2304-9f15-4db0-ae72-9b2d54ac4f8d" />
+
+
