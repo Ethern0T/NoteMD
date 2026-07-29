@@ -1,0 +1,15 @@
+# Swift Package Manager
+/.build/
+/Build/
+
+# Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# macOS
+.DS_Store
+
+# Local app bundles and signing artifacts
+*.app/
+*.dSYM/
