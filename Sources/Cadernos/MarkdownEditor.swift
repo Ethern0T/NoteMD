@@ -3,6 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct MarkdownEditor: NSViewRepresentable {
+    @Environment(\.colorScheme) private var colorScheme
     @Binding var text: String
     @Binding var selection: NSRange
     let pasteImage: (NSImage) -> String?
@@ -23,6 +24,7 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.isAutomaticTextReplacementEnabled = false
         textView.allowsUndo = true
         textView.font = .monospacedSystemFont(ofSize: 14, weight: .regular)
+        textView.drawsBackground = true
         textView.textContainerInset = NSSize(width: 18, height: 18)
         textView.minSize = .zero
         textView.maxSize = NSSize(
@@ -31,12 +33,14 @@ struct MarkdownEditor: NSViewRepresentable {
         )
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
         textView.textContainer?.widthTracksTextView = true
         textView.string = text
+        applyTheme(to: textView)
         scrollView.documentView = textView
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
-        scrollView.drawsBackground = false
+        scrollView.drawsBackground = true
         context.coordinator.textView = textView
         context.coordinator.highlightMarkdown(in: textView)
         return scrollView
@@ -45,15 +49,47 @@ struct MarkdownEditor: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         context.coordinator.parent = self
         guard let textView = scrollView.documentView as? NSTextView else { return }
+        let viewport = scrollView.contentSize
+        let contentHeight = max(
+            viewport.height,
+            (textView.layoutManager?.usedRect(
+                for: textView.textContainer!
+            ).height ?? 0) + (textView.textContainerInset.height * 2)
+        )
+        textView.setFrameSize(
+            NSSize(
+                width: max(1, viewport.width),
+                height: max(1, contentHeight)
+            )
+        )
         (textView as? FocusableTextView)?.pasteImage = pasteImage
+        applyTheme(to: textView)
         if textView.string != text {
             textView.string = text
-            context.coordinator.highlightMarkdown(in: textView)
+            applyTheme(to: textView)
         }
+        context.coordinator.highlightMarkdown(in: textView)
         if textView.selectedRange() != selection,
            NSMaxRange(selection) <= (text as NSString).length {
             textView.setSelectedRange(selection)
         }
+    }
+
+    private func applyTheme(to textView: NSTextView) {
+        let foreground = colorScheme == .dark ? NSColor.white : NSColor.black
+        let background = colorScheme == .dark
+            ? NSColor(calibratedWhite: 0.08, alpha: 1)
+            : NSColor.white
+
+        textView.textColor = foreground
+        textView.backgroundColor = background
+        textView.enclosingScrollView?.backgroundColor = background
+        textView.insertionPointColor = foreground
+        textView.typingAttributes = [
+            .foregroundColor: foreground,
+            .font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        ]
+        textView.needsDisplay = true
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
@@ -72,6 +108,7 @@ struct MarkdownEditor: NSViewRepresentable {
         func textViewDidChangeSelection(_ notification: Notification) {
             guard let textView else { return }
             parent.selection = textView.selectedRange()
+            textView.needsDisplay = true
         }
 
         func highlightMarkdown(in textView: NSTextView) {
@@ -142,6 +179,167 @@ struct MarkdownEditor: NSViewRepresentable {
                 )
             }
         }
+    }
+}
+
+private final class LineNumberRulerView: NSRulerView {
+    private weak var textView: NSTextView?
+    var usesDarkTheme: Bool
+
+    init(
+        scrollView: NSScrollView,
+        textView: NSTextView,
+        usesDarkTheme: Bool
+    ) {
+        self.textView = textView
+        self.usesDarkTheme = usesDarkTheme
+        super.init(scrollView: scrollView, orientation: .verticalRuler)
+        clientView = textView
+        ruleThickness = 44
+
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        let center = NotificationCenter.default
+        for name in [
+            NSView.boundsDidChangeNotification,
+            NSText.didChangeNotification,
+            NSTextView.didChangeSelectionNotification
+        ] {
+            center.addObserver(
+                self,
+                selector: #selector(redraw),
+                name: name,
+                object: name == NSView.boundsDidChangeNotification
+                    ? scrollView.contentView
+                    : textView
+            )
+        }
+    }
+
+    required init(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func redraw() {
+        needsDisplay = true
+    }
+
+    override func drawHashMarksAndLabels(in rect: NSRect) {
+        guard let textView,
+              let layoutManager = textView.layoutManager,
+              let textContainer = textView.textContainer,
+              let scrollView
+        else { return }
+
+        let background = usesDarkTheme
+            ? NSColor(calibratedWhite: 0.13, alpha: 1)
+            : NSColor(calibratedWhite: 0.95, alpha: 1)
+        background.setFill()
+        rect.fill()
+
+        NSColor.separatorColor.setFill()
+        NSRect(
+            x: bounds.maxX - 1,
+            y: bounds.minY,
+            width: 1,
+            height: bounds.height
+        ).fill()
+
+        let source = textView.string as NSString
+        let selected = min(textView.selectedRange().location, source.length)
+        let activeLine = lineNumber(at: selected, in: source)
+        let visible = scrollView.contentView.bounds
+        let containerVisible = visible.offsetBy(
+            dx: -textView.textContainerOrigin.x,
+            dy: -textView.textContainerOrigin.y
+        )
+        let glyphRange = layoutManager.glyphRange(
+            forBoundingRect: containerVisible,
+            in: textContainer
+        )
+        var rendered = Set<Int>()
+
+        layoutManager.enumerateLineFragments(
+            forGlyphRange: glyphRange
+        ) { fragment, _, _, glyphRange, _ in
+            let index = min(
+                layoutManager.characterIndexForGlyph(at: glyphRange.location),
+                source.length
+            )
+            let line = self.lineNumber(at: index, in: source)
+            guard rendered.insert(line).inserted else { return }
+
+            let y = fragment.minY
+                + textView.textContainerOrigin.y
+                - visible.minY
+            self.drawNumber(
+                line,
+                y: y,
+                height: fragment.height,
+                active: line == activeLine
+            )
+        }
+
+        if source.length == 0 {
+            drawNumber(
+                1,
+                y: textView.textContainerOrigin.y - visible.minY,
+                height: 18,
+                active: true
+            )
+        }
+    }
+
+    private func lineNumber(at location: Int, in source: NSString) -> Int {
+        guard location > 0 else { return 1 }
+        var result = 1
+        for index in 0..<min(location, source.length)
+        where source.character(at: index) == 10 {
+            result += 1
+        }
+        return result
+    }
+
+    private func drawNumber(
+        _ number: Int,
+        y: CGFloat,
+        height: CGFloat,
+        active: Bool
+    ) {
+        if active {
+            NSColor.controlAccentColor
+                .withAlphaComponent(usesDarkTheme ? 0.30 : 0.16)
+                .setFill()
+            NSBezierPath(
+                roundedRect: NSRect(
+                    x: 6,
+                    y: y - 1,
+                    width: 31,
+                    height: max(18, height + 2)
+                ),
+                xRadius: 6,
+                yRadius: 6
+            ).fill()
+        }
+
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .right
+        ("\(number)" as NSString).draw(
+            in: NSRect(x: 7, y: y + 1, width: 26, height: 16),
+            withAttributes: [
+                .font: NSFont.monospacedDigitSystemFont(
+                    ofSize: 11,
+                    weight: active ? .semibold : .regular
+                ),
+                .foregroundColor: active
+                    ? NSColor.controlAccentColor
+                    : (usesDarkTheme ? NSColor.lightGray : NSColor.darkGray),
+                .paragraphStyle: paragraph
+            ]
+        )
     }
 }
 
@@ -361,10 +559,11 @@ struct MarkdownFormattingToolbar: View {
                 button("curlybraces", tr("Bloco de código")) { wrap("```\n", "\n```") }
             }
             .padding(.horizontal, 12)
+            .padding(.vertical, 5)
         }
         .scrollIndicators(.hidden)
-        .frame(height: 38)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .frame(height: 44)
+        .background(.ultraThinMaterial)
         .overlay(alignment: .bottom) { Divider() }
     }
 
@@ -380,6 +579,9 @@ struct MarkdownFormattingToolbar: View {
             Button(tr("Título 6")) { prefixLines("###### ") }
         } label: {
             Label(tr("Título"), systemImage: "textformat")
+                .padding(.horizontal, 10)
+                .frame(height: 28)
+                .background(.thinMaterial, in: Capsule())
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
@@ -387,9 +589,14 @@ struct MarkdownFormattingToolbar: View {
 
     private func button(_ icon: String, _ help: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: icon).frame(width: 25, height: 24)
+            Image(systemName: icon)
+                .frame(width: 28, height: 28)
+                .background(
+                    Color.primary.opacity(0.055),
+                    in: RoundedRectangle(cornerRadius: 7)
+                )
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(.plain)
         .help(help)
     }
 

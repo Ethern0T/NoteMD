@@ -10,6 +10,7 @@ struct NoteWorkspace: View {
     let sidebarIsHidden: Bool
 
     @EnvironmentObject private var library: LibraryStore
+    @Environment(\.colorScheme) private var colorScheme
     @State private var mode = EditorMode.editor
     @State private var editorSelection = NSRange(location: 0, length: 0)
 
@@ -27,6 +28,7 @@ struct NoteWorkspace: View {
                 )
                 .textFieldStyle(.plain)
                 .font(.title.bold())
+                .foregroundStyle(.primary)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 18)
 
@@ -57,7 +59,14 @@ struct NoteWorkspace: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .background(workspaceBackground)
         .ignoresSafeArea(.container, edges: .top)
+    }
+
+    private var workspaceBackground: Color {
+        colorScheme == .dark
+            ? Color(red: 0.10, green: 0.10, blue: 0.11)
+            : Color(red: 0.99, green: 0.99, blue: 0.99)
     }
 
     private var markdownBinding: Binding<String> {
@@ -74,12 +83,21 @@ struct NoteWorkspace: View {
                 selection: $editorSelection,
                 storeImage: library.storePastedImage
             )
-            MarkdownEditor(
-                text: markdownBinding,
-                selection: $editorSelection,
-                pasteImage: library.storePastedImage
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            HStack(spacing: 0) {
+                EditorLineNumberColumn(
+                    markdown: markdownBinding.wrappedValue,
+                    selection: editorSelection
+                )
+
+                Divider()
+
+                MarkdownEditor(
+                    text: markdownBinding,
+                    selection: $editorSelection,
+                    pasteImage: library.storePastedImage
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
             EditorStatusBar(markdown: markdownBinding.wrappedValue)
         }
     }
@@ -100,7 +118,61 @@ struct NoteWorkspace: View {
     }
 }
 
+private struct EditorLineNumberColumn: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let markdown: String
+    let selection: NSRange
+
+    private var lineCount: Int {
+        max(1, markdown.components(separatedBy: .newlines).count)
+    }
+
+    private var activeLine: Int {
+        let source = markdown as NSString
+        let location = min(selection.location, source.length)
+        guard location > 0 else { return 1 }
+        return source.substring(to: location).reduce(into: 1) { count, character in
+            if character == "\n" { count += 1 }
+        }
+    }
+
+    var body: some View {
+        ScrollView(.vertical) {
+            LazyVStack(spacing: 0) {
+                ForEach(1...lineCount, id: \.self) { line in
+                    Text("\(line)")
+                        .font(.system(size: 11, weight: line == activeLine ? .semibold : .regular))
+                        .monospacedDigit()
+                        .foregroundStyle(
+                            line == activeLine ? Color.accentColor : Color.secondary
+                        )
+                        .frame(width: 31, height: 17, alignment: .trailing)
+                        .padding(.horizontal, 6)
+                        .background {
+                            if line == activeLine {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.accentColor.opacity(
+                                        colorScheme == .dark ? 0.28 : 0.15
+                                    ))
+                            }
+                        }
+                }
+            }
+            .padding(.top, 18)
+        }
+        .scrollIndicators(.hidden)
+        .frame(width: 44)
+        .background(
+            colorScheme == .dark
+                ? Color(red: 0.13, green: 0.13, blue: 0.14)
+                : Color(red: 0.95, green: 0.95, blue: 0.96)
+        )
+        .clipped()
+    }
+}
+
 private struct EditorStatusBar: View {
+    @Environment(\.colorScheme) private var colorScheme
     let markdown: String
 
     private var words: Int {
@@ -112,26 +184,61 @@ private struct EditorStatusBar: View {
     }
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Text("\(words) \(tr("palavras"))")
+                .foregroundStyle(statusTextColor)
             Text("•")
+                .foregroundStyle(statusTextColor.opacity(0.65))
             Text("\(markdown.count) \(tr("carateres"))")
-            Text("•")
-            Text("\(lines) \(tr("linhas"))")
+                .foregroundStyle(statusTextColor)
             Spacer()
+            Label(
+                "\(lines) \(tr("linhas"))",
+                systemImage: "text.line.first.and.arrowtriangle.forward"
+            )
+            .font(.caption.weight(.semibold))
+            .monospacedDigit()
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(
+                Capsule()
+                    .fill(counterColor)
+            )
+            .overlay {
+                Capsule()
+                    .stroke(Color.white.opacity(0.28), lineWidth: 1)
+            }
             Text("Markdown")
+                .foregroundStyle(statusTextColor)
         }
         .font(.caption)
-        .foregroundStyle(.secondary)
         .padding(.horizontal, 12)
-        .frame(height: 24)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .frame(height: 34)
+        .background(barBackground)
         .overlay(alignment: .top) { Divider() }
+    }
+
+    private var barBackground: Color {
+        colorScheme == .dark
+            ? Color(red: 0.13, green: 0.13, blue: 0.14)
+            : Color(red: 0.96, green: 0.96, blue: 0.97)
+    }
+
+    private var counterColor: Color {
+        colorScheme == .dark
+            ? Color(red: 0.16, green: 0.48, blue: 0.92)
+            : Color(red: 0.03, green: 0.30, blue: 0.72)
+    }
+
+    private var statusTextColor: Color {
+        colorScheme == .dark ? .white : .black
     }
 }
 
 private struct NoteTabBar: View {
     @EnvironmentObject private var library: LibraryStore
+    @Environment(\.colorScheme) private var colorScheme
     @Binding var mode: EditorMode
     let sidebarIsHidden: Bool
 
@@ -155,31 +262,40 @@ private struct NoteTabBar: View {
                 _ = library.saveActiveNote()
             } label: {
                 Image(systemName: "square.and.arrow.down")
-                    .frame(width: 24, height: 22)
+                    .frame(width: 30, height: 30)
+                    .background(.thinMaterial, in: Circle())
             }
             .buttonStyle(.plain)
             .disabled(library.activeNoteID == nil)
             .help(tr("Guardar nota (⌘S)"))
             .keyboardShortcut("s", modifiers: .command)
-            .padding(.trailing, 8)
+            .padding(.trailing, 2)
 
             Button {
                 library.exportActiveNoteToPDF()
             } label: {
                 Image(systemName: "doc.richtext")
-                    .frame(width: 24, height: 22)
+                    .frame(width: 30, height: 30)
+                    .background(.thinMaterial, in: Circle())
             }
             .buttonStyle(.plain)
             .disabled(library.activeNoteID == nil)
             .help(tr("Exportar nota para PDF"))
-            .padding(.trailing, 8)
+            .padding(.trailing, 10)
         }
-        .background(.bar)
+        .foregroundStyle(colorScheme == .dark ? Color.white : Color.black)
+        .background(.ultraThinMaterial)
         .overlay(alignment: .bottom) {
             Divider()
         }
-        .frame(height: 40)
+        .frame(height: 48)
         .padding(.leading, sidebarIsHidden ? 72 : 0)
+    }
+
+    private var tabBarBackground: Color {
+        colorScheme == .dark
+            ? Color(red: 0.13, green: 0.13, blue: 0.14)
+            : Color(red: 0.96, green: 0.96, blue: 0.97)
     }
 
     private var modeButtons: some View {
@@ -200,9 +316,12 @@ private struct NoteTabBar: View {
                 help: tr("Editor e visualização")
             )
         }
-        .padding(2)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 7))
+        .padding(3)
+        .background(.thinMaterial, in: Capsule())
+        .overlay {
+            Capsule()
+                .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+        }
     }
 
     private func modeButton(
@@ -214,11 +333,11 @@ private struct NoteTabBar: View {
             mode = targetMode
         } label: {
             Image(systemName: icon)
-                .frame(width: 24, height: 22)
+                .frame(width: 28, height: 26)
                 .background {
                     if mode == targetMode {
-                        RoundedRectangle(cornerRadius: 5)
-                            .fill(Color(nsColor: .selectedContentBackgroundColor))
+                        Capsule()
+                            .fill(Color.accentColor)
                     }
                 }
                 .foregroundStyle(mode == targetMode ? .white : .primary)
