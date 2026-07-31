@@ -98,6 +98,7 @@ O NoteMD é uma aplicação nativa para macOS, construída em Swift com SwiftUI 
 AppKit.
 
 ## Screenshots
+<img width="1540" height="934" alt="image" src="https://github.com/user-attachments/assets/ff321fa9-83f9-40d8-a2ca-2ebc46ed9636" />
 
 <img width="1540" height="934" alt="image" src="https://github.com/user-attachments/assets/918a837a-f4a6-4457-af3b-683555caeb31" />
 <img width="1540" height="934" alt="Captura de ecrã 2026-07-28, às 23 07 04" src="https://github.com/user-attachments/assets/e6af6534-5645-4f89-ae1e-66af956ad2d3" />
