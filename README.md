@@ -1,62 +1,28 @@
 <div align="center">
-  <img src="Assets/NoteMD-AppIcon-1024.png" alt="Ícone do NoteMD" width="180">
+  <img src="Assets/NoteMD-AppIcon-1024.png" alt="Ícone do NoteMD" width="140">
 
   # NoteMD
 
-  **Um editor Markdown nativo para macOS.**
-
-  Guarda as tuas ideias em ficheiros markdown.
+  Editor Markdown local para macOS.
 </div>
 
-## Escrever sem distrações
+## Funções
 
-O NoteMD combina a simplicidade de um bloco de notas com as possibilidades do
-Markdown. Podes escrever diretamente em Markdown, trabalhar num editor visual
-ou utilizar os dois lado a lado.
+- Organização de notas em notebooks.
+- Edição em Markdown, modo visual ou vista dividida com pré-visualização.
+- Abertura e edição direta de ficheiros `.md` externos.
+- Gravação automática, recuperação de rascunhos e histórico de versões.
+- Pesquisa por título, conteúdo e tags.
+- Tags, cores e vários separadores abertos.
+- Formatação de títulos, listas, tarefas, citações, ligações, tabelas e código.
+- Inserção de imagens locais através de colar ou seleção de ficheiro.
+- Contagem de palavras, caracteres e linhas.
+- Exportação para PDF.
+- Interface em português, inglês e francês.
 
-O editor inclui uma barra de formatação completa para títulos, negrito,
-itálico, texto rasurado, listas, listas numeradas, tarefas, citações, ligações,
-separadores, tabelas, código inline e blocos de código.
+## Armazenamento
 
-## Organizar com notebooks
-
-Agrupa as notas em notebooks expansíveis e atribui cores aos notebooks e às
-notas para os encontrares rapidamente. Os nomes podem ser alterados diretamente
-na barra lateral e as respetivas pastas acompanham automaticamente a alteração.
-
-Várias notas podem permanecer abertas ao mesmo tempo em separadores no topo da
-janela, permitindo alternar entre conteúdos sem perder espaço de trabalho.
-
-## Markdown e edição visual
-
-O NoteMD oferece três formas de trabalhar:
-
-- editor Markdown com realce de sintaxe;
-- editor visual por blocos;
-- vista dividida para editar e acompanhar o resultado lado a lado.
-
-O editor apresenta ainda a contagem de palavras, caracteres e linhas da nota.
-
-## Imagens e conteúdo avançado
-
-É possível colar imagens diretamente com `⌘V`. Cada imagem é guardada na pasta
-`assets` da respetiva nota e a referência Markdown é inserida automaticamente.
-
-As notas também podem incluir:
-
-- tabelas;
-- listas de tarefas;
-- blocos de código com linguagem;
-- citações e ligações;
-- listas e separadores;
-- texto colorido;
-- imagens locais.
-
-## Ficheiros locais e portáteis
-
-No primeiro arranque, o NoteMD pede uma pasta onde guardar a biblioteca. Cada
-nota é armazenada como um ficheiro Markdown individual, juntamente com os seus
-recursos:
+As notas são guardadas localmente na pasta escolhida pelo utilizador:
 
 ```text
 Pasta das notas/
@@ -65,42 +31,24 @@ Pasta das notas/
         ├── note.md
         ├── .note.json
         └── assets/
-            └── imagem.png
 ```
 
-Esta estrutura é aberta e portátil: os ficheiros `note.md` podem ser lidos e
-editados por qualquer outro editor Markdown.
+Ficheiros Markdown externos permanecem no local original. O NoteMD não exige
+conta nem envia notas para serviços externos.
 
-## Guardar e exportar
+## Requisitos
 
-As alterações podem ser guardadas através do botão dedicado ou com `⌘S`. Ao
-fechar uma nota ou sair da aplicação, o NoteMD pergunta se pretendes guardar
-alterações pendentes.
+- macOS 14 ou posterior.
+- Swift 6 para compilação a partir do código-fonte.
 
-Qualquer nota pode também ser exportada diretamente para PDF.
+## Compilar
 
-## Idiomas
+```shell
+swift build -c release
+```
 
-A interface está disponível em:
+O executável é criado em `.build/arm64-apple-macosx/release/NoteMD`.
 
-- Português;
-- English;
-- Français.
+## Licença
 
-## Privacidade
-
-As notas e imagens permanecem localmente na pasta escolhida. O NoteMD não exige
-conta e não envia o conteúdo das notas para servidores externos.
-
-## Compatibilidade
-
-O NoteMD é uma aplicação nativa para macOS, construída em Swift com SwiftUI e
-AppKit.
-
-## Screenshots
-<img width="1540" height="934" alt="image" src="https://github.com/user-attachments/assets/ff321fa9-83f9-40d8-a2ca-2ebc46ed9636" />
-
-<img width="1540" height="934" alt="image" src="https://github.com/user-attachments/assets/918a837a-f4a6-4457-af3b-683555caeb31" />
-<img width="1540" height="934" alt="Captura de ecrã 2026-07-28, às 23 07 04" src="https://github.com/user-attachments/assets/e6af6534-5645-4f89-ae1e-66af956ad2d3" />
-
-
+Consulte [LICENSE](LICENSE).
