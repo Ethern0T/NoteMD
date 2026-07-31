@@ -3,9 +3,9 @@
 
   # NoteMD
 
-  **Um editor Markdown nativo, elegante e organizado para macOS.**
+  **Um editor Markdown nativo para macOS.**
 
-  Escreve, organiza e guarda as tuas ideias em ficheiros que continuam a ser teus.
+  Guarda as tuas ideias em ficheiros markdown.
 </div>
 
 ## Escrever sem distrações
