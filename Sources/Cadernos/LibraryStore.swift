@@ -43,10 +43,11 @@ final class LibraryStore: ObservableObject {
                encoding: .utf8
            ) {
             notebooks[notebookIndex].notes[noteIndex].markdown = markdown
-            notebooks[notebookIndex].notes[noteIndex].updatedAt =
-                (try? URL(fileURLWithPath: path).resourceValues(
+            let modificationDate = try? URL(fileURLWithPath: path).resourceValues(
                     forKeys: [.contentModificationDateKey]
-                ).contentModificationDate) ?? .now
+                ).contentModificationDate
+            notebooks[notebookIndex].notes[noteIndex].updatedAt = modificationDate ?? .now
+            notebooks[notebookIndex].notes[noteIndex].externalModificationDate = modificationDate
         }
 
         selectedNotebookID = notebooks[notebookIndex].id
@@ -96,17 +97,93 @@ final class LibraryStore: ObservableObject {
         return notebook.id
     }
 
-    func addNote(to notebookID: Notebook.ID) {
+    func addNote(to notebookID: Notebook.ID, template: NoteTemplate? = nil) {
         guard let notebookIndex = notebooks.firstIndex(where: {
             $0.id == notebookID
         }) else { return }
 
-        let note = Note(title: "Nova nota", markdown: "# Nova nota\n")
+        let note = Note(
+            title: template?.title ?? tr("Nova nota"),
+            markdown: template?.markdown ?? "# \(tr("Nova nota"))\n"
+        )
         notebooks[notebookIndex].notes.append(note)
         dirtyNoteIDs.insert(note.id)
         writeRecoveryDraft(note)
         scheduleAutosave(for: note.id)
         openNote(note.id)
+    }
+
+    func moveNote(_ noteID: Note.ID, to notebookID: Notebook.ID) {
+        guard let source = noteLocation(withID: noteID),
+              let destination = notebooks.firstIndex(where: { $0.id == notebookID }),
+              notebooks[source.0].id != notebookID
+        else { return }
+        let note = notebooks[source.0].notes.remove(at: source.1)
+
+        if note.externalFilePath == nil,
+           let rootPath = UserDefaults.standard.string(forKey: "notesFolderPath"),
+           let noteFolderName = note.storageFolderName {
+            let sourceNotebook = notebooks[source.0].storageFolderName
+                ?? safeStorageName(notebooks[source.0].title)
+            let destinationNotebook = notebooks[destination].storageFolderName
+                ?? safeStorageName(notebooks[destination].title)
+            let root = URL(fileURLWithPath: rootPath, isDirectory: true)
+            let sourceURL = root
+                .appendingPathComponent(sourceNotebook, isDirectory: true)
+                .appendingPathComponent(noteFolderName, isDirectory: true)
+            let destinationFolder = root.appendingPathComponent(
+                destinationNotebook,
+                isDirectory: true
+            )
+            let destinationURL = destinationFolder.appendingPathComponent(
+                noteFolderName,
+                isDirectory: true
+            )
+            if FileManager.default.fileExists(atPath: sourceURL.path),
+               !FileManager.default.fileExists(atPath: destinationURL.path) {
+                try? FileManager.default.createDirectory(
+                    at: destinationFolder,
+                    withIntermediateDirectories: true
+                )
+                try? FileManager.default.moveItem(at: sourceURL, to: destinationURL)
+                if notebooks[destination].storageFolderName == nil {
+                    notebooks[destination].storageFolderName = destinationNotebook
+                }
+            }
+        }
+        notebooks[destination].notes.append(note)
+        selectedNotebookID = notebookID
+        persistNoteOrder(in: notebooks[source.0].id)
+        persistNoteOrder(in: notebookID)
+    }
+
+    func sortNotes(in notebookID: Notebook.ID, by order: NoteSortOrder) {
+        guard order != .manual,
+              let index = notebooks.firstIndex(where: { $0.id == notebookID })
+        else { return }
+        switch order {
+        case .title:
+            notebooks[index].notes.sort {
+                $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+            }
+        case .updated:
+            notebooks[index].notes.sort { $0.updatedAt > $1.updatedAt }
+        case .manual:
+            break
+        }
+        persistNoteOrder(in: notebookID)
+    }
+
+    func reorderNote(_ movingID: Note.ID, before targetID: Note.ID) {
+        guard movingID != targetID,
+              let moving = noteLocation(withID: movingID),
+              let target = noteLocation(withID: targetID),
+              moving.0 == target.0
+        else { return }
+        let note = notebooks[moving.0].notes.remove(at: moving.1)
+        let adjustedTarget = moving.1 < target.1 ? target.1 - 1 : target.1
+        notebooks[moving.0].notes.insert(note, at: adjustedTarget)
+        persistNoteOrder(in: notebooks[moving.0].id)
     }
 
     @discardableResult
@@ -127,15 +204,17 @@ final class LibraryStore: ObservableObject {
             let title = url.deletingPathExtension().lastPathComponent
             let savedRecord = externalFileRecords.first(where: { $0.path == url.path })
             let savedTags = savedRecord?.tags ?? []
+            let modificationDate = try? url.resourceValues(
+                forKeys: [.contentModificationDateKey]
+            ).contentModificationDate
             let note = Note(
                 id: savedRecord?.id ?? UUID(),
                 title: title.isEmpty ? tr("Sem título") : title,
                 markdown: markdown,
-                updatedAt: (try? url.resourceValues(
-                    forKeys: [.contentModificationDateKey]
-                ).contentModificationDate) ?? .now,
+                updatedAt: modificationDate ?? .now,
                 tags: savedTags,
-                externalFilePath: url.path
+                externalFilePath: url.path,
+                externalModificationDate: modificationDate
             )
 
             let notebookIndex: Int
@@ -179,6 +258,19 @@ final class LibraryStore: ObservableObject {
         if let path = note.externalFilePath {
             storeExternalFileRecord(id: note.id, path: path, tags: normalized)
         }
+    }
+
+    func updateExternalState(
+        for noteID: Note.ID,
+        markdown: String? = nil,
+        modificationDate: Date?
+    ) {
+        guard let (notebookIndex, noteIndex) = noteLocation(withID: noteID) else { return }
+        if let markdown {
+            notebooks[notebookIndex].notes[noteIndex].markdown = markdown
+        }
+        notebooks[notebookIndex].notes[noteIndex].externalModificationDate = modificationDate
+        notebooks[notebookIndex].notes[noteIndex].updatedAt = modificationDate ?? .now
     }
 
     func reopenExternalFiles() {

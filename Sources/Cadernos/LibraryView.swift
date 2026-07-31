@@ -1,4 +1,6 @@
+import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct LibraryView: View {
     @EnvironmentObject private var library: LibraryStore
@@ -19,6 +21,11 @@ struct LibraryView: View {
         } detail: {
             NoteWorkspace(sidebarIsHidden: columnVisibility == .detailOnly)
         }
+        .onDrop(
+            of: [UTType.fileURL.identifier],
+            isTargeted: nil,
+            perform: handleFileDrop
+        )
         .onAppear {
             if let firstID = library.notebooks.first?.id {
                 expandedNotebookIDs.insert(firstID)
@@ -48,9 +55,18 @@ struct LibraryView: View {
                             noteRow(note)
                         }
 
-                        Button {
-                            library.addNote(to: notebook.id)
-                            expandedNotebookIDs.insert(notebook.id)
+                        Menu {
+                            Button(tr("Nota vazia")) {
+                                library.addNote(to: notebook.id)
+                                expandedNotebookIDs.insert(notebook.id)
+                            }
+                            Divider()
+                            ForEach(NoteTemplate.builtIn) { template in
+                                Button(tr(template.name)) {
+                                    library.addNote(to: notebook.id, template: template)
+                                    expandedNotebookIDs.insert(notebook.id)
+                                }
+                            }
                         } label: {
                             Label(tr("Nova nota"), systemImage: "plus")
                                 .foregroundStyle(.secondary)
@@ -126,11 +142,29 @@ struct LibraryView: View {
                                     Label(tr("Cor do notebook"), systemImage: "paintpalette")
                                 }
 
+                                Menu(tr("Ordenar notas")) {
+                                    Button(tr("Por título")) {
+                                        library.sortNotes(in: notebook.id, by: .title)
+                                    }
+                                    Button(tr("Mais recentes")) {
+                                        library.sortNotes(in: notebook.id, by: .updated)
+                                    }
+                                }
+
                                 Button(role: .destructive) {
                                     library.deleteNotebook(notebook.id)
                                 } label: {
                                     Label(tr("Remover notebook"), systemImage: "trash")
                                 }
+                            }
+                            .dropDestination(for: String.self) { items, _ in
+                                var moved = false
+                                for value in items {
+                                    guard let id = UUID(uuidString: value) else { continue }
+                                    library.moveNote(id, to: notebook.id)
+                                    moved = true
+                                }
+                                return moved
                             }
                     }
                 }
@@ -210,7 +244,8 @@ struct LibraryView: View {
                             selectedTag = selectedTag == tag ? nil : tag
                         } label: {
                             HStack {
-                                Image(systemName: "tag.fill")
+                                Image(systemName: "tag")
+                                    .foregroundStyle(.secondary)
                                 Text(tag)
                                 Spacer()
                                 Text("\(tagCount(tag))")
@@ -237,8 +272,8 @@ struct LibraryView: View {
             }
             .frame(maxHeight: 150)
         }
-        .padding(10)
-        .background(.ultraThinMaterial)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         }
         .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 310)
     }
@@ -269,6 +304,41 @@ struct LibraryView: View {
         searchIsFocused = false
     }
 
+    private func handleFileDrop(_ providers: [NSItemProvider]) -> Bool {
+        var accepted = false
+        for provider in providers where provider.hasItemConformingToTypeIdentifier(
+            UTType.fileURL.identifier
+        ) {
+            accepted = true
+            provider.loadItem(
+                forTypeIdentifier: UTType.fileURL.identifier,
+                options: nil
+            ) { item, _ in
+                let url: URL?
+                if let data = item as? Data {
+                    url = URL(dataRepresentation: data, relativeTo: nil)
+                } else {
+                    url = item as? URL
+                }
+                guard let url else { return }
+                Task { @MainActor in
+                    let ext = url.pathExtension.lowercased()
+                    if ["md", "markdown", "mdown", "mkd"].contains(ext) {
+                        _ = library.openMarkdownFile(at: url)
+                    } else if let image = NSImage(contentsOf: url),
+                              let insertion = library.storePastedImage(image) {
+                        let current = library.selectedNote?.markdown ?? ""
+                        let separator = current.hasSuffix("\n") ? "" : "\n"
+                        library.updateSelectedNote(
+                            markdown: current + separator + insertion + "\n"
+                        )
+                    }
+                }
+            }
+        }
+        return accepted
+    }
+
     private func noteRow(_ note: Note) -> some View {
         Button {
             library.openNote(note.id)
@@ -290,6 +360,16 @@ struct LibraryView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .draggable(note.id.uuidString)
+        .dropDestination(for: String.self) { items, _ in
+            var reordered = false
+            for value in items {
+                guard let id = UUID(uuidString: value) else { continue }
+                library.reorderNote(id, before: note.id)
+                reordered = true
+            }
+            return reordered
+        }
         .padding(.leading, 4)
         .contextMenu {
             Menu {
@@ -310,6 +390,16 @@ struct LibraryView: View {
                 }
             } label: {
                 Label(tr("Cor da nota"), systemImage: "paintpalette")
+            }
+
+            Menu(tr("Mover para notebook")) {
+                ForEach(library.notebooks.filter { notebook in
+                    !notebook.notes.contains(where: { $0.id == note.id })
+                }) { notebook in
+                    Button(notebook.title) {
+                        library.moveNote(note.id, to: notebook.id)
+                    }
+                }
             }
 
             Button(role: .destructive) {

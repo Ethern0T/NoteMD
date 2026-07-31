@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct MarkdownEditor: NSViewRepresentable {
     @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("editorTheme") private var editorTheme = EditorTheme.system.rawValue
     @Binding var text: String
     @Binding var selection: NSRange
     let pasteImage: (NSImage) -> String?
@@ -23,7 +24,7 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
         textView.allowsUndo = true
-        textView.font = .monospacedSystemFont(ofSize: 14, weight: .regular)
+        textView.font = .monospacedSystemFont(ofSize: 15, weight: .regular)
         textView.drawsBackground = true
         textView.textContainerInset = NSSize(width: 18, height: 18)
         textView.minSize = .zero
@@ -76,10 +77,9 @@ struct MarkdownEditor: NSViewRepresentable {
     }
 
     private func applyTheme(to textView: NSTextView) {
-        let foreground = colorScheme == .dark ? NSColor.white : NSColor.black
-        let background = colorScheme == .dark
-            ? NSColor(calibratedWhite: 0.08, alpha: 1)
-            : NSColor.white
+        let palette = editorPalette
+        let foreground = palette.foreground
+        let background = palette.background
 
         textView.textColor = foreground
         textView.backgroundColor = background
@@ -87,9 +87,13 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.insertionPointColor = foreground
         textView.typingAttributes = [
             .foregroundColor: foreground,
-            .font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+            .font: NSFont.monospacedSystemFont(ofSize: 15, weight: .regular)
         ]
         textView.needsDisplay = true
+    }
+
+    private var editorPalette: EditorPalette {
+        (EditorTheme(rawValue: editorTheme) ?? .system).palette(colorScheme: colorScheme)
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
@@ -113,6 +117,7 @@ struct MarkdownEditor: NSViewRepresentable {
 
         func highlightMarkdown(in textView: NSTextView) {
             guard let layoutManager = textView.layoutManager else { return }
+            let palette = parent.editorPalette
             let fullRange = NSRange(
                 location: 0,
                 length: (textView.string as NSString).length
@@ -128,34 +133,57 @@ struct MarkdownEditor: NSViewRepresentable {
             apply(
                 #"(?m)^#{1,6}\s.+$"#,
                 attributes: [
-                    .foregroundColor: NSColor.systemBlue,
-                    .font: NSFont.monospacedSystemFont(ofSize: 14, weight: .bold)
+                    .foregroundColor: palette.heading,
+                    .font: NSFont.monospacedSystemFont(ofSize: 15, weight: .bold)
                 ],
                 to: textView
             )
             apply(
                 #"(?s)```.*?```"#,
-                attributes: [.backgroundColor: NSColor.controlBackgroundColor],
+                attributes: [
+                    .foregroundColor: palette.code,
+                    .backgroundColor: palette.codeBackground
+                ],
                 to: textView
             )
             apply(
                 #"`[^`\n]+`"#,
-                attributes: [.foregroundColor: NSColor.systemPurple],
+                attributes: [.foregroundColor: palette.code],
                 to: textView
             )
             apply(
                 #"\*\*[^*\n]+\*\*"#,
-                attributes: [.foregroundColor: NSColor.systemOrange],
+                attributes: [.foregroundColor: palette.emphasis],
                 to: textView
             )
             apply(
                 #"!?\[[^\]\n]+\]\([^)]+\)"#,
-                attributes: [.foregroundColor: NSColor.systemTeal],
+                attributes: [.foregroundColor: palette.link],
                 to: textView
             )
             apply(
                 #"(?m)^>\s.+$"#,
-                attributes: [.foregroundColor: NSColor.secondaryLabelColor],
+                attributes: [.foregroundColor: palette.quote],
+                to: textView
+            )
+            apply(
+                #"(?m)^\s*(?:[-*+] |\d+\. |[-*+] \[[ xX]\] ).+$"#,
+                attributes: [.foregroundColor: palette.list],
+                to: textView
+            )
+            apply(
+                #"\[\[[^\]\n]+\]\]"#,
+                attributes: [.foregroundColor: palette.link],
+                to: textView
+            )
+            apply(
+                #"(?m)^\s*(?:---|\*\*\*)\s*$"#,
+                attributes: [.foregroundColor: palette.emphasis],
+                to: textView
+            )
+            apply(
+                #"(?<!\*)\*[^*\n]+\*(?!\*)|_[^_\n]+_"#,
+                attributes: [.foregroundColor: palette.emphasis],
                 to: textView
             )
         }

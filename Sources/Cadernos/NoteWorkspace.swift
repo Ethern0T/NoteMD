@@ -13,26 +13,35 @@ struct NoteWorkspace: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var mode = EditorMode.editor
     @State private var editorSelection = NSRange(location: 0, length: 0)
+    @State private var showsFind = false
+    @State private var findText = ""
+    @State private var replaceText = ""
+    @State private var previewScrollFraction = 0.0
 
     var body: some View {
         VStack(spacing: 0) {
             NoteTabBar(mode: $mode, sidebarIsHidden: sidebarIsHidden)
             
             if let note = library.selectedNote {
-                TextField(
-                    "Título",
-                    text: Binding(
-                        get: { library.selectedNote?.title ?? "" },
-                        set: { library.updateSelectedNote(title: $0) }
+                HStack(spacing: 14) {
+                    TextField(
+                        "Título",
+                        text: Binding(
+                            get: { library.selectedNote?.title ?? "" },
+                            set: { library.updateSelectedNote(title: $0) }
+                        )
                     )
-                )
-                .textFieldStyle(.plain)
-                .font(.title.bold())
-                .foregroundStyle(.primary)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 18)
+                    .textFieldStyle(.plain)
+                    .font(.headline.bold())
+                    .foregroundStyle(.primary)
+                    .frame(minWidth: 160, idealWidth: 240, maxWidth: 340)
 
-                NoteTagBar(note: note)
+                    NoteTagBar(note: note)
+                        .frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 7)
+                DocumentNavigationBar(note: note)
 
                 Divider()
 
@@ -48,7 +57,11 @@ struct NoteWorkspace: View {
                         HSplitView {
                             editorPane
                                 .frame(minWidth: 380, idealWidth: 520)
-                            previewPane(note.markdown)
+                            MarkdownPreview(
+                                source: note.markdown,
+                                assetsURL: library.activeNoteAssetsURL,
+                                scrollFraction: previewScrollFraction
+                            )
                                 .frame(minWidth: 380, idealWidth: 520)
                         }
                     }
@@ -63,6 +76,10 @@ struct NoteWorkspace: View {
         }
         .background(workspaceBackground)
         .ignoresSafeArea(.container, edges: .top)
+        .onChange(of: editorSelection) { _, selection in
+            let length = max(1, (markdownBinding.wrappedValue as NSString).length)
+            previewScrollFraction = min(1, Double(selection.location) / Double(length))
+        }
     }
 
     private var workspaceBackground: Color {
@@ -80,11 +97,32 @@ struct NoteWorkspace: View {
 
     private var editorPane: some View {
         VStack(spacing: 0) {
-            MarkdownFormattingToolbar(
-                text: markdownBinding,
-                selection: $editorSelection,
-                storeImage: library.storePastedImage
-            )
+            HStack(spacing: 0) {
+                MarkdownFormattingToolbar(
+                    text: markdownBinding,
+                    selection: $editorSelection,
+                    storeImage: library.storePastedImage
+                )
+                Button {
+                    showsFind.toggle()
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut("f", modifiers: .command)
+                .help(tr("Pesquisar e substituir"))
+                .padding(.trailing, 8)
+            }
+            if showsFind {
+                FindReplaceBar(
+                    text: markdownBinding,
+                    selection: $editorSelection,
+                    findText: $findText,
+                    replaceText: $replaceText,
+                    close: { showsFind = false }
+                )
+            }
             HStack(spacing: 0) {
                 EditorLineNumberColumn(
                     markdown: markdownBinding.wrappedValue,
@@ -169,8 +207,6 @@ private struct NoteTagBar: View {
             .buttonStyle(.plain)
             .disabled(newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 10)
     }
 
     private func addTag() {
@@ -178,6 +214,140 @@ private struct NoteTagBar: View {
         guard !value.isEmpty else { return }
         library.updateTags(note.tags + [value], for: note.id)
         newTag = ""
+    }
+}
+
+private struct DocumentNavigationBar: View {
+    @EnvironmentObject private var library: LibraryStore
+    let note: Note
+
+    var body: some View {
+        if !outgoingTitles.isEmpty || !backlinks.isEmpty {
+            HStack(spacing: 12) {
+                if !outgoingTitles.isEmpty {
+                    Menu {
+                        ForEach(outgoingTitles, id: \.self) { title in
+                            Button(title) { openNote(titled: title) }
+                        }
+                    } label: {
+                        Label(tr("Ligações"), systemImage: "link")
+                    }
+                }
+                if !backlinks.isEmpty {
+                    Menu {
+                        ForEach(backlinks) { linkedNote in
+                            Button(linkedNote.title) { library.openNote(linkedNote.id) }
+                        }
+                    } label: {
+                        Label("\(tr("Backlinks")) (\(backlinks.count))", systemImage: "arrowshape.turn.up.backward")
+                    }
+                }
+                Spacer()
+            }
+            .font(.caption)
+            .menuStyle(.borderlessButton)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 8)
+        }
+    }
+
+    private var outgoingTitles: [String] {
+        let source = note.markdown as NSString
+        let regex = try? NSRegularExpression(pattern: #"\[\[([^\]]+)\]\]"#)
+        return Array(Set((regex?.matches(
+            in: note.markdown,
+            range: NSRange(location: 0, length: source.length)
+        ) ?? []).map { source.substring(with: $0.range(at: 1)) })).sorted()
+    }
+
+    private var backlinks: [Note] {
+        let token = "[[\(note.title)]]"
+        return library.notebooks.flatMap(\.notes).filter {
+            $0.id != note.id && $0.markdown.localizedCaseInsensitiveContains(token)
+        }
+    }
+
+    private func openNote(titled title: String) {
+        if let target = library.notebooks.flatMap(\.notes).first(where: {
+            $0.title.caseInsensitiveCompare(title) == .orderedSame
+        }) {
+            library.openNote(target.id)
+        } else if let notebookID = library.selectedNotebookID {
+            library.addNote(
+                to: notebookID,
+                template: NoteTemplate(
+                    id: UUID().uuidString,
+                    name: title,
+                    title: title,
+                    markdown: "# \(title)\n"
+                )
+            )
+        }
+    }
+}
+
+private struct FindReplaceBar: View {
+    @Binding var text: String
+    @Binding var selection: NSRange
+    @Binding var findText: String
+    @Binding var replaceText: String
+    let close: () -> Void
+
+    var body: some View {
+        HStack(spacing: 7) {
+            TextField(tr("Pesquisar"), text: $findText)
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: 190)
+                .onSubmit(findNext)
+            TextField(tr("Substituir por"), text: $replaceText)
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: 190)
+            Button(tr("Seguinte"), action: findNext)
+            Button(tr("Substituir"), action: replaceCurrent)
+            Button(tr("Substituir tudo"), action: replaceAll)
+            Spacer()
+            Button(action: close) { Image(systemName: "xmark") }
+                .buttonStyle(.plain)
+        }
+        .controlSize(.small)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color(nsColor: .controlBackgroundColor))
+    }
+
+    private func findNext() {
+        guard !findText.isEmpty else { return }
+        let source = text as NSString
+        let start = min(NSMaxRange(selection), source.length)
+        var range = source.range(
+            of: findText,
+            options: [.caseInsensitive],
+            range: NSRange(location: start, length: source.length - start)
+        )
+        if range.location == NSNotFound {
+            range = source.range(of: findText, options: [.caseInsensitive])
+        }
+        if range.location != NSNotFound { selection = range }
+    }
+
+    private func replaceCurrent() {
+        let source = text as NSString
+        guard selection.location != NSNotFound,
+              NSMaxRange(selection) <= source.length,
+              source.substring(with: selection).caseInsensitiveCompare(findText) == .orderedSame
+        else { findNext(); return }
+        text = source.replacingCharacters(in: selection, with: replaceText)
+        selection = NSRange(location: selection.location + (replaceText as NSString).length, length: 0)
+        findNext()
+    }
+
+    private func replaceAll() {
+        guard !findText.isEmpty else { return }
+        text = text.replacingOccurrences(
+            of: findText,
+            with: replaceText,
+            options: [.caseInsensitive]
+        )
     }
 }
 
@@ -304,6 +474,7 @@ private struct NoteTabBar: View {
     @Environment(\.colorScheme) private var colorScheme
     @Binding var mode: EditorMode
     let sidebarIsHidden: Bool
+    @State private var showsHistory = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -334,44 +505,34 @@ private struct NoteTabBar: View {
             .keyboardShortcut("s", modifiers: .command)
             .padding(.trailing, 2)
 
-            Menu {
-                if let noteID = library.activeNoteID {
-                    let versions = library.versions(for: noteID)
-                    if versions.isEmpty {
-                        Text(tr("Sem versões anteriores"))
-                    } else {
-                        ForEach(versions) { version in
-                            Button {
-                                library.restoreVersion(version)
-                            } label: {
-                                Text(version.createdAt.formatted(
-                                    date: .abbreviated,
-                                    time: .shortened
-                                ))
-                            }
-                        }
-                    }
-                }
+            Button {
+                showsHistory = true
             } label: {
                 Image(systemName: "clock.arrow.circlepath")
+                    .frame(width: 30, height: 30)
+                    .background(.thinMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(library.activeNoteID == nil)
+            .help(tr("Histórico de versões"))
+            .sheet(isPresented: $showsHistory) {
+                VersionHistoryView()
+                    .environmentObject(library)
+            }
+
+            Menu {
+                Button("PDF") { library.exportActiveNoteToPDF() }
+                Button("HTML") { library.exportActiveNoteToHTML() }
+                Button("DOCX") { library.exportActiveNoteToDOCX() }
+            } label: {
+                Image(systemName: "doc.richtext")
                     .frame(width: 30, height: 30)
                     .background(.thinMaterial, in: Circle())
             }
             .menuStyle(.borderlessButton)
             .frame(width: 34)
             .disabled(library.activeNoteID == nil)
-            .help(tr("Histórico de versões"))
-
-            Button {
-                library.exportActiveNoteToPDF()
-            } label: {
-                Image(systemName: "doc.richtext")
-                    .frame(width: 30, height: 30)
-                    .background(.thinMaterial, in: Circle())
-            }
-            .buttonStyle(.plain)
-            .disabled(library.activeNoteID == nil)
-            .help(tr("Exportar nota para PDF"))
+            .help(tr("Exportar nota"))
             .padding(.trailing, 10)
         }
         .foregroundStyle(colorScheme == .dark ? Color.white : Color.black)
@@ -518,5 +679,89 @@ private struct NoteTabBar: View {
             radius: 2,
             y: 1
         )
+    }
+}
+
+private struct VersionHistoryView: View {
+    @EnvironmentObject private var library: LibraryStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedVersion: NoteVersion?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(tr("Histórico de versões"))
+                    .font(.title2.bold())
+                Spacer()
+                Button(tr("Concluído")) { dismiss() }
+            }
+            .padding()
+            Divider()
+            HSplitView {
+                List(versions, selection: Binding(
+                    get: { selectedVersion?.id },
+                    set: { id in selectedVersion = versions.first { $0.id == id } }
+                )) { version in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(version.createdAt.formatted(date: .abbreviated, time: .shortened))
+                        Text(library.versionDifference(version))
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                    }
+                    .tag(version.id)
+                }
+                .frame(minWidth: 210, idealWidth: 240)
+
+                if let version = selectedVersion {
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text(tr("Versão guardada")).font(.headline)
+                            Spacer()
+                            Button(tr("Restaurar esta versão")) {
+                                library.restoreVersion(version)
+                                dismiss()
+                            }
+                            Button(role: .destructive) {
+                                library.deleteVersion(version)
+                                selectedVersion = nil
+                            } label: { Text(tr("Eliminar versão")) }
+                        }
+                        .padding(10)
+                        HSplitView {
+                            versionText(title: tr("Versão guardada"), text: version.markdown)
+                            versionText(
+                                title: tr("Versão atual"),
+                                text: library.selectedNote?.markdown ?? ""
+                            )
+                        }
+                    }
+                } else {
+                    ContentUnavailableView(
+                        tr("Selecione uma versão"),
+                        systemImage: "clock.arrow.circlepath"
+                    )
+                }
+            }
+        }
+        .frame(width: 900, height: 560)
+        .onAppear { selectedVersion = versions.first }
+    }
+
+    private var versions: [NoteVersion] {
+        library.activeNoteID.map(library.versions(for:)) ?? []
+    }
+
+    private func versionText(title: String, text: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            ScrollView {
+                Text(text)
+                    .font(.system(.body, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+            }
+        }
+        .padding(8)
     }
 }

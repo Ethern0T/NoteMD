@@ -65,7 +65,10 @@ extension LibraryStore {
                 at: folderURL,
                 withIntermediateDirectories: true
             )
-            let metadata = NotebookMetadata(colorHex: colorHex)
+            let metadata = NotebookMetadata(
+                colorHex: colorHex,
+                noteOrder: notebook.notes.map(\.id)
+            )
             try JSONEncoder().encode(metadata).write(to: metadataURL, options: .atomic)
             markNotebookStored(notebookID, folderName: folderName)
         } catch {
@@ -216,12 +219,19 @@ extension LibraryStore {
                     )
                 }
 
+                let notebookMetadata = notebookMetadata(at: notebookURL)
+                if let order = notebookMetadata?.noteOrder {
+                    notes.sort {
+                        (order.firstIndex(of: $0.id) ?? Int.max)
+                            < (order.firstIndex(of: $1.id) ?? Int.max)
+                    }
+                }
                 loaded.append(
                     Notebook(
                         title: notebookURL.lastPathComponent,
                         notes: notes,
                         storageFolderName: notebookURL.lastPathComponent,
-                        colorHex: notebookColor(at: notebookURL)
+                        colorHex: notebookMetadata?.colorHex
                     )
                 )
             }
@@ -286,11 +296,45 @@ extension LibraryStore {
 
         if let path = location.note.externalFilePath {
             do {
+                let url = URL(fileURLWithPath: path)
+                let diskDate = try? url.resourceValues(
+                    forKeys: [.contentModificationDateKey]
+                ).contentModificationDate
+                if let diskDate,
+                   let knownDate = location.note.externalModificationDate,
+                   diskDate > knownDate.addingTimeInterval(0.01) {
+                    guard showingErrors else { return false }
+                    let alert = NSAlert()
+                    alert.messageText = tr("O ficheiro foi alterado noutra aplicação")
+                    alert.informativeText = tr("Escolha qual versão pretende manter.")
+                    alert.addButton(withTitle: tr("Substituir ficheiro"))
+                    alert.addButton(withTitle: tr("Recarregar ficheiro"))
+                    alert.addButton(withTitle: tr("Cancelar"))
+                    switch alert.runModal() {
+                    case .alertFirstButtonReturn:
+                        break
+                    case .alertSecondButtonReturn:
+                        let diskMarkdown = try String(contentsOf: url, encoding: .utf8)
+                        updateExternalState(
+                            for: id,
+                            markdown: diskMarkdown,
+                            modificationDate: diskDate
+                        )
+                        markSaved(id)
+                        return true
+                    default:
+                        return false
+                    }
+                }
                 createVersionSnapshot(for: location.note)
                 try Data(location.note.markdown.utf8).write(
-                    to: URL(fileURLWithPath: path),
+                    to: url,
                     options: .atomic
                 )
+                let savedDate = try? url.resourceValues(
+                    forKeys: [.contentModificationDateKey]
+                ).contentModificationDate
+                updateExternalState(for: id, modificationDate: savedDate)
                 markSaved(id)
                 clearRecoveryDraft(for: id)
                 return true
@@ -508,12 +552,12 @@ extension LibraryStore {
         left.lastPathComponent.localizedStandardCompare(right.lastPathComponent) == .orderedAscending
     }
 
-    private func notebookColor(at folderURL: URL) -> String? {
+    private func notebookMetadata(at folderURL: URL) -> NotebookMetadata? {
         let url = folderURL.appendingPathComponent(".notebook.json")
         guard let data = try? Data(contentsOf: url),
               let metadata = try? JSONDecoder().decode(NotebookMetadata.self, from: data)
         else { return nil }
-        return metadata.colorHex
+        return metadata
     }
 
     private func noteMetadata(at folderURL: URL) -> NoteMetadata? {
@@ -551,6 +595,44 @@ extension LibraryStore {
         guard activeNoteID == version.noteID else { return }
         updateSelectedNote(title: version.title, markdown: version.markdown)
         updateTags(version.tags, for: version.noteID)
+    }
+
+    func deleteVersion(_ version: NoteVersion) {
+        let url = versionsDirectory
+            .appendingPathComponent(version.noteID.uuidString, isDirectory: true)
+            .appendingPathComponent("\(version.id.uuidString).json")
+        try? FileManager.default.removeItem(at: url)
+        objectWillChange.send()
+    }
+
+    func versionDifference(_ version: NoteVersion) -> String {
+        guard let current = note(withID: version.noteID) else { return "" }
+        let oldLines = Set(version.markdown.components(separatedBy: .newlines))
+        let newLines = Set(current.markdown.components(separatedBy: .newlines))
+        return "+\(newLines.subtracting(oldLines).count)  −\(oldLines.subtracting(newLines).count)"
+    }
+
+    func persistNoteOrder(in notebookID: Notebook.ID) {
+        guard let notebook = notebooks.first(where: { $0.id == notebookID }),
+              let rootURL = storageRootURL
+        else { return }
+        let folderName = notebook.storageFolderName ?? safeFilename(notebook.title)
+        let folderURL = rootURL.appendingPathComponent(folderName, isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(
+                at: folderURL,
+                withIntermediateDirectories: true
+            )
+            let metadata = NotebookMetadata(
+                colorHex: notebook.colorHex,
+                noteOrder: notebook.notes.map(\.id)
+            )
+            try JSONEncoder().encode(metadata).write(
+                to: folderURL.appendingPathComponent(".notebook.json"),
+                options: .atomic
+            )
+            markNotebookStored(notebookID, folderName: folderName)
+        } catch { }
     }
 
     private func createVersionSnapshot(for note: Note) {
@@ -597,6 +679,12 @@ extension LibraryStore {
 
 private struct NotebookMetadata: Codable {
     let colorHex: String?
+    let noteOrder: [UUID]?
+
+    init(colorHex: String?, noteOrder: [UUID]) {
+        self.colorHex = colorHex
+        self.noteOrder = noteOrder
+    }
 }
 
 private struct NoteMetadata: Codable {

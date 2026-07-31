@@ -1,5 +1,23 @@
 import Foundation
 
+enum NoteSortOrder: String, CaseIterable {
+    case manual, title, updated
+}
+
+struct NoteTemplate: Identifiable {
+    let id: String
+    let name: String
+    let title: String
+    let markdown: String
+
+    static let builtIn: [NoteTemplate] = [
+        .init(id: "meeting", name: "Reunião", title: "Reunião", markdown: "# Reunião\n\n**Data:** \n**Participantes:** \n\n## Agenda\n\n- \n\n## Notas\n\n## Ações\n\n- [ ] \n"),
+        .init(id: "daily", name: "Diário", title: "Diário", markdown: "# Diário\n\n## Prioridades\n\n- [ ] \n\n## Notas\n\n"),
+        .init(id: "project", name: "Projeto", title: "Projeto", markdown: "# Projeto\n\n## Objetivo\n\n## Tarefas\n\n- [ ] \n\n## Referências\n\n"),
+        .init(id: "checklist", name: "Checklist", title: "Checklist", markdown: "# Checklist\n\n- [ ] \n")
+    ]
+}
+
 struct Notebook: Identifiable, Hashable {
     let id: UUID
     var title: String
@@ -31,6 +49,7 @@ struct Note: Identifiable, Hashable {
     var colorHex: String?
     var tags: [String]
     var externalFilePath: String?
+    var externalModificationDate: Date?
 
     init(
         id: UUID = UUID(),
@@ -40,7 +59,8 @@ struct Note: Identifiable, Hashable {
         storageFolderName: String? = nil,
         colorHex: String? = nil,
         tags: [String] = [],
-        externalFilePath: String? = nil
+        externalFilePath: String? = nil,
+        externalModificationDate: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -50,5 +70,6 @@ struct Note: Identifiable, Hashable {
         self.colorHex = colorHex
         self.tags = tags
         self.externalFilePath = externalFilePath
+        self.externalModificationDate = externalModificationDate
     }
 }

@@ -39,13 +39,17 @@ struct VisualMarkdownEditor: View {
                 } label: {
                     Label(tr("Adicionar bloco"), systemImage: "plus.circle")
                 }
+                .tint(.accentColor)
                 .menuStyle(.borderlessButton)
                 .padding(.top, 8)
             }
             .frame(maxWidth: 780, alignment: .leading)
-            .padding(28)
+            .font(.system(size: 16))
+            .padding(.horizontal, 30)
+            .padding(.vertical, 24)
             .frame(maxWidth: .infinity)
         }
+        .foregroundStyle(.primary)
         .background(Color(nsColor: .textBackgroundColor))
         .onAppear {
             blocks = VisualMarkdownParser.parse(markdown)
@@ -91,6 +95,7 @@ struct VisualMarkdownEditor: View {
             blocks = [.paragraph()]
         }
     }
+
 }
 
 private struct VisualBlockView: View {
@@ -98,17 +103,9 @@ private struct VisualBlockView: View {
     let assetsURL: URL?
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: block.kind.icon)
-                .foregroundStyle(.tertiary)
-                .frame(width: 18, height: 24)
-
-            content
-        }
+        content
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(Color.primary.opacity(0.025))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder
@@ -116,6 +113,7 @@ private struct VisualBlockView: View {
         switch block.kind {
         case .paragraph:
             growingEditor(font: .body)
+                .foregroundStyle(.primary)
 
         case .heading:
             HStack {
@@ -128,11 +126,15 @@ private struct VisualBlockView: View {
                     .textFieldStyle(.plain)
                     .font(headingFont)
                     .fontWeight(.bold)
+                    .foregroundStyle(.tint)
             }
+            .tint(.accentColor)
 
         case .bullet:
             HStack(alignment: .firstTextBaseline) {
                 Text("•")
+                    .foregroundStyle(.tint)
+                    .fontWeight(.bold)
                 TextField(tr("Conteúdo"), text: $block.text)
                     .textFieldStyle(.plain)
             }
@@ -140,7 +142,8 @@ private struct VisualBlockView: View {
         case .numbered:
             HStack(alignment: .firstTextBaseline) {
                 Text("\(block.number).")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.tint)
+                    .fontWeight(.semibold)
                 TextField(tr("Conteúdo"), text: $block.text)
                     .textFieldStyle(.plain)
             }
@@ -149,6 +152,7 @@ private struct VisualBlockView: View {
             HStack {
                 Toggle("", isOn: $block.isChecked)
                     .labelsHidden()
+                    .tint(.accentColor)
                 TextField(tr("Conteúdo"), text: $block.text)
                     .textFieldStyle(.plain)
                     .strikethrough(block.isChecked)
@@ -157,7 +161,7 @@ private struct VisualBlockView: View {
         case .quote:
             HStack {
                 RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.secondary.opacity(0.5))
+                    .fill(Color.secondary.opacity(0.65))
                     .frame(width: 4)
                 growingEditor(font: .body)
                     .foregroundStyle(.secondary)
@@ -168,12 +172,19 @@ private struct VisualBlockView: View {
                 TextField(tr("Linguagem"), text: $block.language)
                     .textFieldStyle(.plain)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.tint)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(Color.accentColor.opacity(0.10), in: Capsule())
                 growingEditor(font: .system(.body, design: .monospaced))
+                    .foregroundStyle(Color(nsColor: .labelColor))
             }
-            .padding(10)
-            .background(Color(nsColor: .controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 7))
+            .padding(12)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+            }
 
         case .table:
             tableEditor
@@ -188,6 +199,7 @@ private struct VisualBlockView: View {
                 TextField(tr("Descrição da imagem"), text: $block.text)
                 TextField(tr("Localização da imagem"), text: $block.location)
                     .font(.caption.monospaced())
+                    .foregroundStyle(.tint)
             }
 
         case .divider:
@@ -216,6 +228,11 @@ private struct VisualBlockView: View {
                             )
                             .textFieldStyle(.roundedBorder)
                             .fontWeight(row == 0 ? .semibold : .regular)
+                            .foregroundStyle(
+                                row == 0
+                                    ? Color.accentColor
+                                    : Color.primary
+                            )
                         }
                     }
                 }
@@ -233,6 +250,7 @@ private struct VisualBlockView: View {
             }
             .buttonStyle(.borderless)
             .font(.caption)
+            .tint(.accentColor)
         }
     }
 
@@ -251,6 +269,7 @@ private struct VisualBlockView: View {
         default: .headline
         }
     }
+
 }
 
 private struct VisualBlock: Identifiable, Equatable {

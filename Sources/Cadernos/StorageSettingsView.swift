@@ -7,6 +7,7 @@ struct StorageSettingsView: View {
     @AppStorage("notesFolderPath") private var notesFolderPath = ""
     @AppStorage("appLanguage") private var appLanguage = AppLanguage.portuguese.rawValue
     @AppStorage("autosaveEnabled") private var autosaveEnabled = true
+    @AppStorage("editorTheme") private var editorTheme = EditorTheme.system.rawValue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -26,6 +27,12 @@ struct StorageSettingsView: View {
             .pickerStyle(.segmented)
 
             Toggle(tr("Gravação automática"), isOn: $autosaveEnabled)
+
+            Picker(tr("Tema do editor"), selection: $editorTheme) {
+                ForEach(EditorTheme.allCases) { theme in
+                    Text(theme.name).tag(theme.rawValue)
+                }
+            }
 
             GroupBox(tr("Localização das notas")) {
                 VStack(alignment: .leading, spacing: 12) {

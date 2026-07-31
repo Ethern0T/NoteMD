@@ -3,26 +3,29 @@
 
   # NoteMD
 
-  Editor Markdown local para macOS.
+  Editor Markdown local para macOS — versão 1.2.
 </div>
 
 ## Funções
 
-- Organização de notas em notebooks.
-- Edição em Markdown, modo visual ou vista dividida com pré-visualização.
+- Notas organizadas em notebooks, separadores, tags e cores.
+- Editor Markdown, editor visual e vista dividida com pré-visualização.
+- Temas Sistema, Monokai, Tokyo Night, Dracula e Solarized Light.
+- Formatação de títulos, listas, tarefas, citações, tabelas, ligações e código.
+- Pesquisa global e pesquisa/substituição dentro da nota.
+- Ligações `[[entre notas]]` e backlinks.
 - Abertura e edição direta de ficheiros `.md` externos.
-- Gravação automática, recuperação de rascunhos e histórico de versões.
-- Pesquisa por título, conteúdo e tags.
-- Tags, cores e vários separadores abertos.
-- Formatação de títulos, listas, tarefas, citações, ligações, tabelas e código.
-- Inserção de imagens locais através de colar ou seleção de ficheiro.
-- Contagem de palavras, caracteres e linhas.
-- Exportação para PDF.
+- Deteção de alterações feitas noutras aplicações.
+- Drag-and-drop de Markdown e imagens.
+- Movimento e ordenação manual de notas.
+- Gravação automática, recuperação e histórico de versões.
+- Templates para reuniões, diário, projetos e checklists.
+- Exportação para PDF com imagens, HTML e DOCX.
 - Interface em português, inglês e francês.
 
 ## Armazenamento
 
-As notas são guardadas localmente na pasta escolhida pelo utilizador:
+As notas são guardadas localmente na pasta escolhida:
 
 ```text
 Pasta das notas/
@@ -33,13 +36,13 @@ Pasta das notas/
         └── assets/
 ```
 
-Ficheiros Markdown externos permanecem no local original. O NoteMD não exige
-conta nem envia notas para serviços externos.
+Ficheiros externos permanecem no local original. O NoteMD não exige conta nem
+envia o conteúdo das notas para serviços externos.
 
 ## Requisitos
 
 - macOS 14 ou posterior.
-- Swift 6 para compilação a partir do código-fonte.
+- Swift 6 para compilação.
 
 ## Compilar
 
@@ -47,7 +50,8 @@ conta nem envia notas para serviços externos.
 swift build -c release
 ```
 
-O executável é criado em `.build/arm64-apple-macosx/release/NoteMD`.
+O executável é criado em `.build/arm64-apple-macosx/release/NoteMD` em Macs com
+Apple Silicon.
 
 ## Licença
 

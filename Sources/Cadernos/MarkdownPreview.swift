@@ -3,18 +3,32 @@ import SwiftUI
 struct MarkdownPreview: View {
     let source: String
     var assetsURL: URL?
+    var scrollFraction: Double? = nil
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 14) {
-                ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
-                    blockView(block)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 14) {
+                    ForEach(Array(blocks.enumerated()), id: \.offset) { index, block in
+                        blockView(block)
+                            .id(index)
+                    }
+                }
+                .textSelection(.enabled)
+                .frame(maxWidth: 760, alignment: .leading)
+                .padding(28)
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .onChange(of: scrollFraction) { _, fraction in
+                guard let fraction, !blocks.isEmpty else { return }
+                let index = min(
+                    blocks.count - 1,
+                    max(0, Int((Double(blocks.count - 1) * fraction).rounded()))
+                )
+                withAnimation(.easeOut(duration: 0.15)) {
+                    proxy.scrollTo(index, anchor: .top)
                 }
             }
-            .textSelection(.enabled)
-            .frame(maxWidth: 760, alignment: .leading)
-            .padding(28)
-            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 

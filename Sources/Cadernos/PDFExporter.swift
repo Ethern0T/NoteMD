@@ -14,8 +14,14 @@ extension LibraryStore {
         panel.nameFieldStringValue = "\(safePDFName(note.title)).pdf"
 
         guard panel.runModal() == .OK, let destination = panel.url else { return }
-        let baseURL = activeNoteAssetsURL?.deletingLastPathComponent()
-        let html = PDFMarkdownRenderer.html(title: note.title, markdown: note.markdown)
+        let baseURL = note.externalFilePath.map {
+            URL(fileURLWithPath: $0).deletingLastPathComponent()
+        } ?? activeNoteAssetsURL?.deletingLastPathComponent()
+        let html = PDFMarkdownRenderer.html(
+            title: note.title,
+            markdown: note.markdown,
+            baseURL: baseURL
+        )
 
         Task { @MainActor in
             do {
@@ -30,6 +36,58 @@ extension LibraryStore {
                 alert.runModal()
             }
         }
+    }
+
+    func exportActiveNoteToHTML() {
+        guard let note = selectedNote else { return }
+        let panel = NSSavePanel()
+        panel.title = tr("Exportar nota para HTML")
+        panel.prompt = tr("Exportar")
+        panel.allowedContentTypes = [.html]
+        panel.nameFieldStringValue = "\(safePDFName(note.title)).html"
+        guard panel.runModal() == .OK, let destination = panel.url else { return }
+        do {
+            try Data(PDFMarkdownRenderer.html(
+                title: note.title,
+                markdown: note.markdown,
+                baseURL: note.externalFilePath.map {
+                    URL(fileURLWithPath: $0).deletingLastPathComponent()
+                } ?? activeNoteAssetsURL?.deletingLastPathComponent()
+            ).utf8).write(to: destination, options: .atomic)
+        } catch {
+            showExportError(error)
+        }
+    }
+
+    func exportActiveNoteToDOCX() {
+        guard let note = selectedNote else { return }
+        let panel = NSSavePanel()
+        panel.title = tr("Exportar nota para DOCX")
+        panel.prompt = tr("Exportar")
+        panel.allowedContentTypes = [
+            UTType(filenameExtension: "docx") ?? .data
+        ]
+        panel.nameFieldStringValue = "\(safePDFName(note.title)).docx"
+        guard panel.runModal() == .OK, let destination = panel.url else { return }
+        do {
+            let attributed = try AttributedString(markdown: note.markdown)
+            let document = NSAttributedString(attributed)
+            let data = try document.data(
+                from: NSRange(location: 0, length: document.length),
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.officeOpenXML]
+            )
+            try data.write(to: destination, options: .atomic)
+        } catch {
+            showExportError(error)
+        }
+    }
+
+    private func showExportError(_ error: Error) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = tr("Não foi possível exportar")
+        alert.informativeText = error.localizedDescription
+        alert.runModal()
     }
 
     private func safePDFName(_ value: String) -> String {
@@ -63,8 +121,24 @@ private final class WebPDFExporter: NSObject, WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation?) {
-        continuation?.resume()
-        continuation = nil
+        Task { @MainActor in
+            _ = try? await webView.callAsyncJavaScript(
+                """
+                await Promise.all(Array.from(document.images).map(image => {
+                  if (image.complete) return Promise.resolve();
+                  return new Promise(resolve => {
+                    image.addEventListener('load', resolve, { once: true });
+                    image.addEventListener('error', resolve, { once: true });
+                  });
+                }));
+                """,
+                arguments: [:],
+                in: nil,
+                contentWorld: .page
+            )
+            continuation?.resume()
+            continuation = nil
+        }
     }
 
     func webView(
@@ -87,30 +161,31 @@ private final class WebPDFExporter: NSObject, WKNavigationDelegate {
 }
 
 private enum PDFMarkdownRenderer {
-    static func html(title: String, markdown: String) -> String {
-        """
+    static func html(title: String, markdown: String, baseURL: URL? = nil) -> String {
+        let content = markdownWithoutRepeatedTitle(markdown, title: title)
+        return """
         <!doctype html>
         <html>
         <head>
         <meta charset="utf-8">
         <style>
-        @page { margin: 54pt; }
+        @page { margin: 58pt 54pt; }
         body {
-          color: #1f2328;
-          font: 15px -apple-system, BlinkMacSystemFont, sans-serif;
-          line-height: 1.55;
+          color: #202124;
+          font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          line-height: 1.62;
           margin: 0 auto;
           max-width: 760px;
         }
-        h1 { font-size: 30px; margin: 0 0 22px; }
-        h2 { font-size: 24px; margin-top: 28px; }
-        h3 { font-size: 19px; margin-top: 24px; }
+        h1 { border-bottom: 2px solid #e8eaed; font-size: 32px; letter-spacing: -0.5px; margin: 0 0 28px; padding-bottom: 12px; }
+        h2 { color: #174ea6; font-size: 23px; margin: 30px 0 10px; }
+        h3 { font-size: 18px; margin: 24px 0 8px; }
         p { margin: 10px 0; }
-        blockquote { border-left: 4px solid #d0d7de; color: #57606a; margin-left: 0; padding-left: 16px; }
+        blockquote { background: #f7f9fc; border-left: 4px solid #4285f4; color: #4a5568; margin: 18px 0; padding: 10px 16px; }
         code { background: #f3f4f6; border-radius: 4px; font-family: ui-monospace, monospace; padding: 2px 5px; }
         pre { background: #f3f4f6; border-radius: 8px; overflow-wrap: anywhere; padding: 14px; white-space: pre-wrap; }
         pre code { padding: 0; }
-        img { display: block; height: auto; margin: 18px auto; max-width: 100%; }
+        img { border-radius: 8px; display: block; height: auto; margin: 24px auto; max-width: 100%; }
         table { border-collapse: collapse; margin: 18px 0; width: 100%; }
         th, td { border: 1px solid #d0d7de; padding: 8px 10px; text-align: left; }
         th { background: #f3f4f6; }
@@ -119,13 +194,13 @@ private enum PDFMarkdownRenderer {
         </head>
         <body>
         <h1>\(escape(title))</h1>
-        \(render(markdown))
+        \(render(content, baseURL: baseURL))
         </body>
         </html>
         """
     }
 
-    private static func render(_ markdown: String) -> String {
+    private static func render(_ markdown: String, baseURL: URL?) -> String {
         let lines = markdown.components(separatedBy: .newlines)
         var output: [String] = []
         var codeLines: [String] = []
@@ -200,7 +275,8 @@ private enum PDFMarkdownRenderer {
                 output.append("<blockquote>\(inline(String(line.dropFirst(2))))</blockquote>")
             } else if let image = image(line) {
                 finishParagraph()
-                output.append("<img src=\"\(attribute(image.location))\" alt=\"\(attribute(image.alt))\">")
+                let source = imageSource(image.location, baseURL: baseURL)
+                output.append("<img src=\"\(attribute(source))\" alt=\"\(attribute(image.alt))\">")
             } else {
                 paragraph.append(line)
             }
@@ -212,6 +288,40 @@ private enum PDFMarkdownRenderer {
             output.append("<pre><code>\(escape(codeLines.joined(separator: "\n")))</code></pre>")
         }
         return output.joined(separator: "\n")
+    }
+
+    private static func markdownWithoutRepeatedTitle(_ markdown: String, title: String) -> String {
+        var lines = markdown.components(separatedBy: .newlines)
+        if let first = lines.first?.trimmingCharacters(in: .whitespaces),
+           first.hasPrefix("# "),
+           String(first.dropFirst(2)).caseInsensitiveCompare(title) == .orderedSame {
+            lines.removeFirst()
+            while lines.first?.isEmpty == true { lines.removeFirst() }
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private static func imageSource(_ location: String, baseURL: URL?) -> String {
+        if let remote = URL(string: location),
+           let scheme = remote.scheme,
+           ["http", "https", "data"].contains(scheme) {
+            return location
+        }
+        let decoded = location.removingPercentEncoding ?? location
+        let url: URL
+        if decoded.hasPrefix("file://"), let fileURL = URL(string: decoded) {
+            url = fileURL
+        } else if decoded.hasPrefix("/") {
+            url = URL(fileURLWithPath: decoded)
+        } else if let baseURL {
+            url = baseURL.appendingPathComponent(decoded)
+        } else {
+            return location
+        }
+        guard let data = try? Data(contentsOf: url) else { return location }
+        let mime = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType
+            ?? "application/octet-stream"
+        return "data:\(mime);base64,\(data.base64EncodedString())"
     }
 
     private static func inline(_ source: String) -> String {
