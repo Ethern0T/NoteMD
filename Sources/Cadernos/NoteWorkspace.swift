@@ -32,6 +32,8 @@ struct NoteWorkspace: View {
                 .padding(.horizontal, 24)
                 .padding(.vertical, 18)
 
+                NoteTagBar(note: note)
+
                 Divider()
 
                 Group {
@@ -46,7 +48,7 @@ struct NoteWorkspace: View {
                         HSplitView {
                             editorPane
                                 .frame(minWidth: 380, idealWidth: 520)
-                            visualEditorPane(note.id)
+                            previewPane(note.markdown)
                                 .frame(minWidth: 380, idealWidth: 520)
                         }
                     }
@@ -115,6 +117,67 @@ struct NoteWorkspace: View {
             assetsURL: library.activeNoteAssetsURL
         )
         .id(noteID)
+    }
+}
+
+private struct NoteTagBar: View {
+    @EnvironmentObject private var library: LibraryStore
+    let note: Note
+    @State private var newTag = ""
+
+    var body: some View {
+        HStack(spacing: 7) {
+            if note.externalFilePath != nil {
+                Label(tr("Ficheiro externo"), systemImage: "link")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .help(note.externalFilePath ?? "")
+            }
+
+            ScrollView(.horizontal) {
+                HStack(spacing: 6) {
+                    ForEach(note.tags, id: \.self) { tag in
+                        HStack(spacing: 4) {
+                            Text("#\(tag)")
+                            Button {
+                                library.updateTags(
+                                    note.tags.filter { $0 != tag },
+                                    for: note.id
+                                )
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 8, weight: .bold))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.accentColor.opacity(0.13), in: Capsule())
+                    }
+                }
+            }
+            .scrollIndicators(.hidden)
+
+            TextField(tr("Adicionar tag"), text: $newTag)
+                .textFieldStyle(.plain)
+                .frame(width: 110)
+                .onSubmit(addTag)
+            Button(action: addTag) {
+                Image(systemName: "plus.circle")
+            }
+            .buttonStyle(.plain)
+            .disabled(newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 10)
+    }
+
+    private func addTag() {
+        let value = newTag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { return }
+        library.updateTags(note.tags + [value], for: note.id)
+        newTag = ""
     }
 }
 
@@ -271,6 +334,34 @@ private struct NoteTabBar: View {
             .keyboardShortcut("s", modifiers: .command)
             .padding(.trailing, 2)
 
+            Menu {
+                if let noteID = library.activeNoteID {
+                    let versions = library.versions(for: noteID)
+                    if versions.isEmpty {
+                        Text(tr("Sem versões anteriores"))
+                    } else {
+                        ForEach(versions) { version in
+                            Button {
+                                library.restoreVersion(version)
+                            } label: {
+                                Text(version.createdAt.formatted(
+                                    date: .abbreviated,
+                                    time: .shortened
+                                ))
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: "clock.arrow.circlepath")
+                    .frame(width: 30, height: 30)
+                    .background(.thinMaterial, in: Circle())
+            }
+            .menuStyle(.borderlessButton)
+            .frame(width: 34)
+            .disabled(library.activeNoteID == nil)
+            .help(tr("Histórico de versões"))
+
             Button {
                 library.exportActiveNoteToPDF()
             } label: {
@@ -307,8 +398,8 @@ private struct NoteTabBar: View {
             )
             modeButton(
                 .preview,
-                icon: "eye",
-                help: tr("Visualizar nota")
+                icon: "text.viewfinder",
+                help: tr("Editar visualmente")
             )
             modeButton(
                 .split,

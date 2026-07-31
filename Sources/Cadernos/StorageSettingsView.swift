@@ -6,6 +6,7 @@ struct StorageSettingsView: View {
     @EnvironmentObject private var library: LibraryStore
     @AppStorage("notesFolderPath") private var notesFolderPath = ""
     @AppStorage("appLanguage") private var appLanguage = AppLanguage.portuguese.rawValue
+    @AppStorage("autosaveEnabled") private var autosaveEnabled = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -23,6 +24,8 @@ struct StorageSettingsView: View {
                 }
             }
             .pickerStyle(.segmented)
+
+            Toggle(tr("Gravação automática"), isOn: $autosaveEnabled)
 
             GroupBox(tr("Localização das notas")) {
                 VStack(alignment: .leading, spacing: 12) {

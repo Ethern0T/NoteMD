@@ -7,7 +7,11 @@ struct LibraryView: View {
     @State private var columnVisibility = NavigationSplitViewVisibility.all
     @State private var editingNotebookID: Notebook.ID?
     @State private var notebookTitleDraft = ""
+    @State private var searchText = ""
+    @State private var showsSearch = false
+    @State private var selectedTag: String?
     @FocusState private var focusedNotebookID: Notebook.ID?
+    @FocusState private var searchIsFocused: Bool
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -33,9 +37,10 @@ struct LibraryView: View {
     }
 
     private var sidebar: some View {
+        VStack(spacing: 0) {
         List {
             Section {
-                ForEach(library.notebooks) { notebook in
+                ForEach(filteredNotebooks) { notebook in
                     DisclosureGroup(
                         isExpanded: expansionBinding(for: notebook.id)
                     ) {
@@ -131,32 +136,137 @@ struct LibraryView: View {
                 }
             } header: {
                 HStack {
-                    Text(tr("Notebooks"))
-                    Spacer()
-                    Button {
-                        showsSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .buttonStyle(.plain)
-                    .help(tr("Configurações"))
-                    Button {
-                        let notebookID = library.addNotebook()
-                        expandedNotebookIDs.insert(notebookID)
-                        editingNotebookID = notebookID
-                        notebookTitleDraft = tr("Novo notebook")
-                        DispatchQueue.main.async {
-                            focusedNotebookID = notebookID
+                    if showsSearch {
+                        HStack(spacing: 6) {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundStyle(.secondary)
+                            TextField(tr("Pesquisar notas"), text: $searchText)
+                                .textFieldStyle(.plain)
+                                .focused($searchIsFocused)
+                                .onSubmit {
+                                    if searchText.isEmpty { closeSearch() }
+                                }
+                            Button(action: closeSearch) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
                         }
-                    } label: {
-                        Image(systemName: "plus")
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 5)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 7))
+                    } else {
+                        Text(tr("Notebooks"))
+                        Spacer()
+                        Button {
+                            showsSearch = true
+                            DispatchQueue.main.async { searchIsFocused = true }
+                        } label: {
+                            Image(systemName: "magnifyingglass")
+                        }
+                        .buttonStyle(.plain)
+                        .help(tr("Pesquisar notas"))
+                        Button {
+                            showsSettings = true
+                        } label: {
+                            Image(systemName: "gearshape")
+                        }
+                        .buttonStyle(.plain)
+                        .help(tr("Configurações"))
+                        Button {
+                            let notebookID = library.addNotebook()
+                            expandedNotebookIDs.insert(notebookID)
+                            editingNotebookID = notebookID
+                            notebookTitleDraft = tr("Novo notebook")
+                            DispatchQueue.main.async {
+                                focusedNotebookID = notebookID
+                            }
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .buttonStyle(.plain)
+                        .help(tr("Novo notebook"))
                     }
-                    .buttonStyle(.plain)
-                    .help(tr("Novo notebook"))
                 }
             }
         }
+
+        Divider()
+        VStack(alignment: .leading, spacing: 7) {
+            HStack {
+                Label(tr("Tags"), systemImage: "tag")
+                    .font(.caption.weight(.semibold))
+                Spacer()
+                if selectedTag != nil {
+                    Button(tr("Limpar")) { selectedTag = nil }
+                        .buttonStyle(.plain)
+                        .font(.caption)
+                }
+            }
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 3) {
+                    ForEach(library.allTags, id: \.self) { tag in
+                        Button {
+                            selectedTag = selectedTag == tag ? nil : tag
+                        } label: {
+                            HStack {
+                                Image(systemName: "tag.fill")
+                                Text(tag)
+                                Spacer()
+                                Text("\(tagCount(tag))")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .contentShape(Rectangle())
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 5)
+                            .background(
+                                selectedTag == tag
+                                    ? Color.accentColor.opacity(0.16)
+                                    : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 6)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    if library.allTags.isEmpty {
+                        Text(tr("Sem tags"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .frame(maxHeight: 150)
+        }
+        .padding(10)
+        .background(.ultraThinMaterial)
+        }
         .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 310)
+    }
+
+    private var filteredNotebooks: [Notebook] {
+        let matchingIDs = library.notes(matching: searchText, tag: selectedTag)
+        let filtering = !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || selectedTag != nil
+        guard filtering else { return library.notebooks }
+        return library.notebooks.compactMap { notebook in
+            let notes = notebook.notes.filter { matchingIDs.contains($0.id) }
+            guard !notes.isEmpty else { return nil }
+            var result = notebook
+            result.notes = notes
+            return result
+        }
+    }
+
+    private func tagCount(_ tag: String) -> Int {
+        library.notebooks.flatMap(\.notes).filter {
+            $0.tags.contains { $0.caseInsensitiveCompare(tag) == .orderedSame }
+        }.count
+    }
+
+    private func closeSearch() {
+        searchText = ""
+        showsSearch = false
+        searchIsFocused = false
     }
 
     private func noteRow(_ note: Note) -> some View {
@@ -217,7 +327,12 @@ struct LibraryView: View {
 
     private func expansionBinding(for id: Notebook.ID) -> Binding<Bool> {
         Binding(
-            get: { expandedNotebookIDs.contains(id) },
+            get: {
+                let filtering = !searchText.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                ).isEmpty || selectedTag != nil
+                return filtering || expandedNotebookIDs.contains(id)
+            },
             set: { isExpanded in
                 if isExpanded {
                     expandedNotebookIDs.insert(id)

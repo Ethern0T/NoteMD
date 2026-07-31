@@ -29,6 +29,8 @@ struct Note: Identifiable, Hashable {
     var updatedAt: Date
     var storageFolderName: String?
     var colorHex: String?
+    var tags: [String]
+    var externalFilePath: String?
 
     init(
         id: UUID = UUID(),
@@ -36,7 +38,9 @@ struct Note: Identifiable, Hashable {
         markdown: String = "",
         updatedAt: Date = .now,
         storageFolderName: String? = nil,
-        colorHex: String? = nil
+        colorHex: String? = nil,
+        tags: [String] = [],
+        externalFilePath: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -44,5 +48,7 @@ struct Note: Identifiable, Hashable {
         self.updatedAt = updatedAt
         self.storageFolderName = storageFolderName
         self.colorHex = colorHex
+        self.tags = tags
+        self.externalFilePath = externalFilePath
     }
 }

@@ -9,6 +9,7 @@ final class LibraryStore: ObservableObject {
     @Published var activeNoteID: Note.ID?
     @Published private(set) var dirtyNoteIDs = Set<Note.ID>()
     var loadedStoragePath: String?
+    private var autosaveTasks: [Note.ID: Task<Void, Never>] = [:]
 
     init(notebooks: [Notebook]) {
         self.notebooks = notebooks
@@ -32,8 +33,21 @@ final class LibraryStore: ObservableObject {
 
     func openNote(_ id: Note.ID?) {
         guard let id,
-              let (notebookIndex, _) = noteLocation(withID: id)
+              let (notebookIndex, noteIndex) = noteLocation(withID: id)
         else { return }
+
+        if !dirtyNoteIDs.contains(id),
+           let path = notebooks[notebookIndex].notes[noteIndex].externalFilePath,
+           let markdown = try? String(
+               contentsOf: URL(fileURLWithPath: path),
+               encoding: .utf8
+           ) {
+            notebooks[notebookIndex].notes[noteIndex].markdown = markdown
+            notebooks[notebookIndex].notes[noteIndex].updatedAt =
+                (try? URL(fileURLWithPath: path).resourceValues(
+                    forKeys: [.contentModificationDateKey]
+                ).contentModificationDate) ?? .now
+        }
 
         selectedNotebookID = notebooks[notebookIndex].id
         if !openNoteIDs.contains(id) {
@@ -69,6 +83,9 @@ final class LibraryStore: ObservableObject {
         }
         notebooks[notebookIndex].notes[noteIndex].updatedAt = .now
         dirtyNoteIDs.insert(notebooks[notebookIndex].notes[noteIndex].id)
+        let note = notebooks[notebookIndex].notes[noteIndex]
+        writeRecoveryDraft(note)
+        scheduleAutosave(for: note.id)
     }
 
     @discardableResult
@@ -87,7 +104,196 @@ final class LibraryStore: ObservableObject {
         let note = Note(title: "Nova nota", markdown: "# Nova nota\n")
         notebooks[notebookIndex].notes.append(note)
         dirtyNoteIDs.insert(note.id)
+        writeRecoveryDraft(note)
+        scheduleAutosave(for: note.id)
         openNote(note.id)
+    }
+
+    @discardableResult
+    func openMarkdownFile(at url: URL) -> Bool {
+        let hasAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if hasAccess { url.stopAccessingSecurityScopedResource() }
+        }
+
+        do {
+            if let existing = notebooks.flatMap(\.notes).first(where: {
+                $0.externalFilePath == url.path
+            }) {
+                openNote(existing.id)
+                return true
+            }
+            let markdown = try String(contentsOf: url, encoding: .utf8)
+            let title = url.deletingPathExtension().lastPathComponent
+            let savedRecord = externalFileRecords.first(where: { $0.path == url.path })
+            let savedTags = savedRecord?.tags ?? []
+            let note = Note(
+                id: savedRecord?.id ?? UUID(),
+                title: title.isEmpty ? tr("Sem título") : title,
+                markdown: markdown,
+                updatedAt: (try? url.resourceValues(
+                    forKeys: [.contentModificationDateKey]
+                ).contentModificationDate) ?? .now,
+                tags: savedTags,
+                externalFilePath: url.path
+            )
+
+            let notebookIndex: Int
+            if let selectedNotebookID,
+               let index = notebooks.firstIndex(where: { $0.id == selectedNotebookID }) {
+                notebookIndex = index
+            } else if !notebooks.isEmpty {
+                notebookIndex = notebooks.startIndex
+            } else {
+                notebooks.append(Notebook(title: tr("Ficheiros abertos")))
+                notebookIndex = notebooks.startIndex
+            }
+
+            notebooks[notebookIndex].notes.append(note)
+            selectedNotebookID = notebooks[notebookIndex].id
+            openNote(note.id)
+            storeExternalFileRecord(id: note.id, path: url.path, tags: savedTags)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    var allTags: [String] {
+        Array(Set(notebooks.flatMap(\.notes).flatMap(\.tags))).sorted {
+            $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
+        }
+    }
+
+    func updateTags(_ tags: [String], for noteID: Note.ID) {
+        guard let (notebookIndex, noteIndex) = noteLocation(withID: noteID) else { return }
+        let normalized = Array(Set(tags.compactMap { value -> String? in
+            let tag = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            return tag.isEmpty ? nil : tag
+        })).sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        notebooks[notebookIndex].notes[noteIndex].tags = normalized
+        dirtyNoteIDs.insert(noteID)
+        let note = notebooks[notebookIndex].notes[noteIndex]
+        writeRecoveryDraft(note)
+        scheduleAutosave(for: noteID)
+        if let path = note.externalFilePath {
+            storeExternalFileRecord(id: note.id, path: path, tags: normalized)
+        }
+    }
+
+    func reopenExternalFiles() {
+        for record in externalFileRecords
+        where FileManager.default.fileExists(atPath: record.path) {
+            _ = openMarkdownFile(at: URL(fileURLWithPath: record.path))
+        }
+    }
+
+    func forgetExternalFile(at path: String) {
+        var records = externalFileRecords
+        records.removeAll { $0.path == path }
+        saveExternalFileRecords(records)
+    }
+
+    func notes(matching query: String, tag: String?) -> Set<Note.ID> {
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return Set(notebooks.flatMap(\.notes).filter { note in
+            let matchesTag = tag.map { selected in
+                note.tags.contains {
+                    $0.caseInsensitiveCompare(selected) == .orderedSame
+                }
+            } ?? true
+            let matchesQuery = needle.isEmpty
+                || note.title.localizedCaseInsensitiveContains(needle)
+                || note.markdown.localizedCaseInsensitiveContains(needle)
+                || note.tags.contains { $0.localizedCaseInsensitiveContains(needle) }
+            return matchesTag && matchesQuery
+        }.map(\.id))
+    }
+
+    func restoreRecoveryDrafts() {
+        let decoder = JSONDecoder()
+        guard let urls = try? FileManager.default.contentsOfDirectory(
+            at: recoveryDirectory,
+            includingPropertiesForKeys: nil
+        ) else { return }
+        let existingIDs = Set(notebooks.flatMap(\.notes).map(\.id))
+        let drafts = urls.compactMap { url -> RecoveryDraft? in
+            guard let data = try? Data(contentsOf: url) else { return nil }
+            return try? decoder.decode(RecoveryDraft.self, from: data)
+        }.filter { !existingIDs.contains($0.id) }
+        guard !drafts.isEmpty else { return }
+
+        let recovered = drafts.map {
+            Note(id: $0.id, title: $0.title, markdown: $0.markdown,
+                 updatedAt: $0.updatedAt, tags: $0.tags,
+                 externalFilePath: $0.externalFilePath)
+        }
+        let notebook = Notebook(title: tr("Recuperadas"), notes: recovered)
+        notebooks.append(notebook)
+        selectedNotebookID = notebook.id
+        dirtyNoteIDs.formUnion(recovered.map(\.id))
+        if let first = recovered.first { openNote(first.id) }
+    }
+
+    func clearRecoveryDraft(for id: Note.ID) {
+        try? FileManager.default.removeItem(
+            at: recoveryDirectory.appendingPathComponent("\(id.uuidString).json")
+        )
+    }
+
+    private func scheduleAutosave(for id: Note.ID) {
+        if UserDefaults.standard.object(forKey: "autosaveEnabled") != nil,
+           !UserDefaults.standard.bool(forKey: "autosaveEnabled") {
+            return
+        }
+        autosaveTasks[id]?.cancel()
+        autosaveTasks[id] = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.2))
+            guard !Task.isCancelled else { return }
+            await MainActor.run { _ = self?.autosaveNote(id) }
+        }
+    }
+
+    private func writeRecoveryDraft(_ note: Note) {
+        do {
+            try FileManager.default.createDirectory(
+                at: recoveryDirectory,
+                withIntermediateDirectories: true
+            )
+            let draft = RecoveryDraft(
+                id: note.id, title: note.title, markdown: note.markdown,
+                updatedAt: note.updatedAt, tags: note.tags,
+                externalFilePath: note.externalFilePath
+            )
+            try JSONEncoder().encode(draft).write(
+                to: recoveryDirectory.appendingPathComponent("\(note.id.uuidString).json"),
+                options: .atomic
+            )
+        } catch { }
+    }
+
+    private var recoveryDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("NoteMD/Recovery", isDirectory: true)
+    }
+
+    private var externalFileRecords: [ExternalFileRecord] {
+        guard let data = UserDefaults.standard.data(forKey: "externalFileRecords") else {
+            return []
+        }
+        return (try? JSONDecoder().decode([ExternalFileRecord].self, from: data)) ?? []
+    }
+
+    private func storeExternalFileRecord(id: UUID, path: String, tags: [String]) {
+        var records = externalFileRecords
+        records.removeAll { $0.path == path }
+        records.append(ExternalFileRecord(id: id, path: path, tags: tags))
+        saveExternalFileRecords(records)
+    }
+
+    private func saveExternalFileRecords(_ records: [ExternalFileRecord]) {
+        guard let data = try? JSONEncoder().encode(records) else { return }
+        UserDefaults.standard.set(data, forKey: "externalFileRecords")
     }
 
     func isDirty(_ id: Note.ID) -> Bool {
@@ -96,6 +302,7 @@ final class LibraryStore: ObservableObject {
 
     func markSaved(_ id: Note.ID) {
         dirtyNoteIDs.remove(id)
+        clearRecoveryDraft(for: id)
     }
 
     func replaceLibrary(with loadedNotebooks: [Notebook]) {
@@ -132,6 +339,7 @@ final class LibraryStore: ObservableObject {
     func removeNoteFromLibrary(_ noteID: Note.ID) {
         closeNote(noteID)
         dirtyNoteIDs.remove(noteID)
+        clearRecoveryDraft(for: noteID)
         for notebookIndex in notebooks.indices {
             guard let noteIndex = notebooks[notebookIndex].notes.firstIndex(
                 where: { $0.id == noteID }
@@ -205,6 +413,27 @@ final class LibraryStore: ObservableObject {
             }
         }
         return nil
+    }
+}
+
+private struct RecoveryDraft: Codable {
+    let id: UUID
+    let title: String
+    let markdown: String
+    let updatedAt: Date
+    let tags: [String]
+    let externalFilePath: String?
+}
+
+private struct ExternalFileRecord: Codable {
+    let id: UUID?
+    let path: String
+    let tags: [String]
+
+    init(id: UUID, path: String, tags: [String]) {
+        self.id = id
+        self.path = path
+        self.tags = tags
     }
 }
 
