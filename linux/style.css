@@ -411,15 +411,15 @@ button.tag-add {
 }
 
 textview.preview, textview.preview text {
-  background: @theme_base_color;
-  color: @theme_text_color;
+  background: @theme_bg_color;
+  color: @theme_fg_color;
   font-family: sans-serif;
   font-size: 18px;
 }
 
 textview, textview text {
-  background: @theme_base_color;
-  color: @theme_text_color;
+  background: @theme_bg_color;
+  color: @theme_fg_color;
   caret-color: @theme_selected_bg_color;
   font-size: 17px;
 }
@@ -432,15 +432,15 @@ textview.line-numbers, textview.line-numbers text {
 }
 
 textview.split-source, textview.split-source text {
-  background: @theme_base_color;
-  color: @theme_text_color;
+  background: @theme_bg_color;
+  color: @theme_fg_color;
   caret-color: @theme_selected_bg_color;
   font-family: monospace;
   font-size: 17px;
 }
 
 .visual-editor {
-  background: @theme_base_color;
+  background: @theme_bg_color;
 }
 
 .visual-editor > box:first-child {
@@ -462,7 +462,7 @@ textview.split-source, textview.split-source text {
 }
 
 .visual-blocks {
-  background: @theme_base_color;
+  background: @theme_bg_color;
 }
 
 .block-card {
@@ -580,13 +580,15 @@ button.icon-button {
   padding: 5px;
 }
 
-.app-header button.icon-button {
+.app-header button.icon-button,
+.title-actions button.icon-button {
   background: transparent;
   border: 0;
   box-shadow: none;
 }
 
-.app-header button.icon-button:hover {
+.app-header button.icon-button:hover,
+.title-actions button.icon-button:hover {
   background: rgba(138, 173, 244, .14);
 }
 

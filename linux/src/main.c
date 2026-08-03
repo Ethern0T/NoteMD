@@ -4023,16 +4023,7 @@ static void activate(Ptr app, Ptr unused) {
     g_timeout_add(2000, (void *)poll_external_file, NULL);
 
     Ptr outer = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    Ptr header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10); gtk_widget_add_css_class(header, "app-header");
-    margins(header, 12, 8);
-    char icon_path[PATH_MAX]; snprintf(icon_path, sizeof icon_path, "%s/NoteMD-AppIcon-1024.png", state.data_dir);
-    Ptr icon = gtk_image_new_from_file(icon_path);
-    gtk_image_set_pixel_size(icon, 34); gtk_box_append(header, icon);
-    Ptr brand = gtk_label_new("NoteMD"); gtk_widget_add_css_class(brand, "brand"); gtk_box_append(header, brand);
     state.sidebar_toggle = icon_button("sidebar-hide-symbolic", tr("Ocultar biblioteca"));
-    g_signal_connect_data(state.sidebar_toggle, "clicked", (void *)toggle_sidebar, NULL, NULL, 0);
-    gtk_box_append(header, state.sidebar_toggle);
-    Ptr header_spacer = gtk_label_new(""); gtk_widget_set_hexpand(header_spacer, true); gtk_box_append(header, header_spacer);
     Ptr add_book = icon_button("folder-new-symbolic", tr("Novo notebook"));
     Ptr add_note = icon_button("document-new-symbolic", tr("Nova nota"));
     Ptr templates = icon_button("document-properties-symbolic", tr("Templates"));
@@ -4041,6 +4032,7 @@ static void activate(Ptr app, Ptr unused) {
     Ptr history = icon_button("document-open-recent-symbolic", tr("Histórico"));
     Ptr export = icon_button("x-office-document-symbolic", "Exportar nota");
     Ptr save = icon_button("document-save-symbolic", tr("Guardar"));
+    g_signal_connect_data(state.sidebar_toggle, "clicked", (void *)toggle_sidebar, NULL, NULL, 0);
     g_signal_connect_data(add_book, "clicked", (void *)new_notebook, NULL, NULL, 0);
     g_signal_connect_data(add_note, "clicked", (void *)new_note, NULL, NULL, 0);
     g_signal_connect_data(templates, "clicked", (void *)show_templates, NULL, NULL, 0);
@@ -4050,9 +4042,6 @@ static void activate(Ptr app, Ptr unused) {
     g_signal_connect_data(export, "clicked", (void *)show_export_menu, NULL, NULL, 0);
     g_signal_connect_data(save, "clicked", (void *)save_active, NULL, NULL, 0);
     gtk_widget_add_css_class(save, "suggested-action");
-    gtk_box_append(header, add_book); gtk_box_append(header, add_note); gtk_box_append(header, templates); gtk_box_append(header, open);
-    gtk_box_append(header, preferences); gtk_box_append(header, history); gtk_box_append(header, export); gtk_box_append(header, save);
-    gtk_box_append(outer, header);
 
     Ptr paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL); gtk_paned_set_position(paned, 280);
     gtk_widget_set_vexpand(paned, true);
@@ -4088,8 +4077,15 @@ static void activate(Ptr app, Ptr unused) {
     state.tabbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2); gtk_widget_add_css_class(state.tabbar, "tabbar");
     gtk_box_append(workspace, state.tabbar);
     Ptr identity = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12); margins(identity, 16, 7);
+    Ptr title_actions = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4); gtk_widget_add_css_class(title_actions, "title-actions");
+    gtk_box_append(title_actions, state.sidebar_toggle);
+    gtk_box_append(title_actions, add_book); gtk_box_append(title_actions, add_note);
+    gtk_box_append(title_actions, templates); gtk_box_append(title_actions, open);
+    gtk_box_append(title_actions, preferences); gtk_box_append(title_actions, history);
+    gtk_box_append(title_actions, export); gtk_box_append(title_actions, save);
+    gtk_box_append(identity, title_actions);
     state.title = gtk_entry_new(); gtk_entry_set_placeholder_text(state.title, tr("Título da nota"));
-    gtk_widget_add_css_class(state.title, "note-title"); gtk_widget_set_size_request(state.title, 420, -1);
+    gtk_widget_add_css_class(state.title, "note-title"); gtk_widget_set_size_request(state.title, 320, -1);
     gtk_widget_set_visible(state.title, false);
     gtk_widget_set_hexpand(state.title, true);
     Ptr tag_area = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5); gtk_widget_add_css_class(tag_area, "note-tag-area");

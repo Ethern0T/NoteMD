@@ -1,7 +1,7 @@
 textview.markdown-source, textview.markdown-source text,
 textview.preview, textview.preview text,
 textview.block-source, textview.block-source text {
-  background: @theme_base_color;
-  color: @theme_text_color;
+  background: @theme_bg_color;
+  color: @theme_fg_color;
   caret-color: @theme_selected_bg_color;
 }
