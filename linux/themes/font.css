@@ -1,0 +1,12 @@
+textview, textview text, textview.markdown-source, textview.markdown-source text {
+  font-family: 'Fira Code', sans-serif;
+  font-size: 18px;
+}
+textview.split-source, textview.split-source text {
+  font-family: 'Fira Code', monospace;
+  font-size: 18px;
+}
+textview.preview, textview.preview text {
+  font-family: 'Fira Code', sans-serif;
+  font-size: 19px;
+}
