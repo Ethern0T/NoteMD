@@ -1,0 +1,7 @@
+textview.markdown-source, textview.markdown-source text,
+textview.preview, textview.preview text,
+textview.block-source, textview.block-source text {
+  background: #272822;
+  color: #f8f8f2;
+  caret-color: #a6e22e;
+}

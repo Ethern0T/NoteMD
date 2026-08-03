@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>pt.notemd.NoteMD</id>
+  <name>NoteMD</name>
+  <summary>Editor Markdown local</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>O NoteMD permite organizar e editar notas Markdown localmente, sem contas ou serviços externos. Inclui notebooks, tags, pesquisa, histórico, temas, ligações entre notas e exportação de documentos.</p>
+  </description>
+  <developer id="io.github.ethern0t"><name>NoteMD contributors</name></developer>
+  <url type="homepage">https://github.com/Ethern0T/NoteMD</url>
+  <url type="bugtracker">https://github.com/Ethern0T/NoteMD/issues</url>
+  <content_rating type="oars-1.1"/>
+  <releases><release version="1.2.0" date="2026-08-03"/></releases>
+  <launchable type="desktop-id">pt.notemd.NoteMD.desktop</launchable>
+  <provides><binary>notemd</binary></provides>
+  <categories><category>Office</category><category>TextEditor</category></categories>
+</component>

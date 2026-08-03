@@ -1,0 +1,9 @@
+Package: notemd
+Version: 1.2.0
+Section: editors
+Priority: optional
+Architecture: amd64
+Depends: libgtk-4-1, zip
+Maintainer: NoteMD contributors
+Description: Editor Markdown local e nativo
+ Organize notebooks e notas Markdown sem contas ou serviços externos.
