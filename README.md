@@ -4,7 +4,7 @@
   # NoteMD
 
   Editor Markdown local para macOS — versão 1.2. A versão nativa GTK 4 para Linux
-  está agora em desenvolvimento em [`linux/`](linux/README.md).
+ em [`linux/`](linux/README.md).
 </div>
 
 ## Funções
