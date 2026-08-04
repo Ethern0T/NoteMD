@@ -71,4 +71,9 @@ swift build -c release
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/6858e979-7f2a-4484-a617-9b38ade86a88" />
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/ab32281d-b5d5-4c65-8247-f8abe71efdd8" />
 
+### macOS
+
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/22b29388-4c18-4140-9060-e8070973ced6" />
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/44461b8b-c662-40de-ba6c-ad0ede31dbd7" />
+
 
