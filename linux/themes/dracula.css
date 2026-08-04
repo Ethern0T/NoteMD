@@ -1,3 +1,10 @@
+@define-color theme_bg_color #282a36;
+@define-color theme_fg_color #f8f8f2;
+@define-color theme_base_color #282a36;
+@define-color theme_text_color #f8f8f2;
+@define-color theme_selected_bg_color #bd93f9;
+@define-color theme_selected_fg_color #ffffff;
+
 textview.markdown-source, textview.markdown-source text,
 textview.preview, textview.preview text,
 textview.block-source, textview.block-source text {

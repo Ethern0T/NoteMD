@@ -58,6 +58,7 @@ typedef struct Note {
     bool external;
     bool dirty;
     bool opened;
+    bool metadata_loaded;
     int order;
     time_t external_mtime;
     char *draft;
@@ -512,6 +513,7 @@ extern void (*gtk_widget_set_margin_bottom) (Ptr, int);
 extern Ptr (*gtk_separator_new) (int);
 extern Ptr (*gtk_css_provider_new) (void);
 extern void (*gtk_css_provider_load_from_path) (Ptr, const char *);
+extern void (*gtk_css_provider_load_from_string) (Ptr, const char *);
 extern Ptr (*gdk_display_get_default) (void);
 extern Ptr (*gdk_display_get_clipboard) (Ptr);
 extern Ptr (*gdk_clipboard_get_formats) (Ptr);

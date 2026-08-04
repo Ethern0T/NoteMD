@@ -82,6 +82,13 @@ char *read_file(const char *path) {
     return data;
 }
 bool write_atomic(const char *path, const char *content) {
+    if (strstr(path, "/gvfs/") != NULL || strstr(path, "/dav:") != NULL || strstr(path, "/davs:") != NULL) {
+        FILE *file = fopen(path, "wb");
+        if (!file) return false;
+        size_t length = strlen(content);
+        bool ok = fwrite(content, 1, length, file) == length && fclose(file) == 0;
+        return ok;
+    }
     char temporary[PATH_MAX];
     snprintf(temporary, sizeof temporary, "%s.tmp", path);
     FILE *file = fopen(temporary, "wb");

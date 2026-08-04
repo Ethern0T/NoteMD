@@ -55,6 +55,7 @@ typedef struct Note {
     bool external;
     bool dirty;
     bool opened;
+    bool metadata_loaded;
     int order;
     time_t external_mtime;
     char *draft;
@@ -223,6 +224,8 @@ FN(void, g_application_quit, (Ptr));
 FN(void, g_object_unref, (Ptr));
 FN(Ptr, g_object_ref, (Ptr));
 FN(void, g_object_set, (Ptr, const char *, ...));
+FN(void, g_object_get, (Ptr, const char *, ...));
+FN(Ptr, gtk_settings_get_default, (void));
 FN(unsigned long, g_signal_connect_data, (Ptr, const char *, void *, Ptr, void *, int));
 FN(void, g_signal_emit_by_name, (Ptr, const char *, ...));
 FN(Ptr, gtk_application_window_new, (Ptr));
@@ -362,6 +365,7 @@ FN(void, gtk_widget_set_margin_bottom, (Ptr, int));
 FN(Ptr, gtk_separator_new, (int));
 FN(Ptr, gtk_css_provider_new, (void));
 FN(void, gtk_css_provider_load_from_path, (Ptr, const char *));
+FN(void, gtk_css_provider_load_from_string, (Ptr, const char *));
 FN(Ptr, gdk_display_get_default, (void));
 FN(Ptr, gdk_display_get_clipboard, (Ptr));
 FN(Ptr, gdk_clipboard_get_formats, (Ptr));
@@ -423,6 +427,7 @@ static void content_changed(Ptr object, Ptr unused);
 static void apply_active_line_tag(void);
 static bool make_directory(const char *path);
 static char *read_file(const char *path);
+static void ensure_metadata_loaded(Note *note);
 static bool write_atomic(const char *path, const char *content);
 static void rename_selected_notebook(Ptr button, Ptr unused);
 static void delete_selected_notebook(Ptr button, Ptr unused);
@@ -450,6 +455,7 @@ static void load_gtk(void) {
     state.gtk = dlopen("libgtk-4.so.1", RTLD_NOW | RTLD_GLOBAL);
     if (!state.gtk) die("GTK 4 não está instalada (libgtk-4.so.1)");
     LOAD(gtk_application_new); LOAD(g_application_run); LOAD(g_application_quit); LOAD(g_object_unref); LOAD(g_object_ref); LOAD(g_object_set);
+    LOAD(g_object_get); LOAD(gtk_settings_get_default);
     LOAD(g_signal_connect_data); LOAD(g_signal_emit_by_name); LOAD(gtk_application_window_new); LOAD(gtk_window_new);
     LOAD(gtk_window_set_transient_for); LOAD(gtk_window_set_modal); LOAD(gtk_window_set_title);
     LOAD(gtk_window_destroy);
@@ -510,7 +516,7 @@ static void load_gtk(void) {
     LOAD(gtk_image_new_from_file); LOAD(gtk_image_new_from_icon_name); LOAD(gtk_image_set_pixel_size);
     LOAD(gtk_widget_set_margin_start);
     LOAD(gtk_widget_set_margin_end); LOAD(gtk_widget_set_margin_top); LOAD(gtk_widget_set_margin_bottom);
-    LOAD(gtk_separator_new); LOAD(gtk_css_provider_new); LOAD(gtk_css_provider_load_from_path);
+    LOAD(gtk_separator_new); LOAD(gtk_css_provider_new); LOAD(gtk_css_provider_load_from_path); LOAD(gtk_css_provider_load_from_string);
     LOAD(gdk_display_get_default); LOAD(gdk_display_get_clipboard); LOAD(gdk_clipboard_get_formats);
     LOAD(gdk_content_formats_contain_gtype); LOAD(gdk_texture_get_type); LOAD(gdk_clipboard_read_texture_async);
     LOAD(gdk_clipboard_read_texture_finish); LOAD(gdk_texture_save_to_png); LOAD(gtk_style_context_add_provider_for_display);
@@ -569,14 +575,9 @@ static void present_popover(Ptr popover, Ptr anchor) {
     gtk_widget_set_parent(popover, anchor); gtk_popover_popup(popover);
 }
 
+static void apply_theme(const char *theme);
 static void load_style(void) {
-    Ptr display = gdk_display_get_default();
-    if (!display) return;
-    Ptr provider = gtk_css_provider_new();
-    char path[PATH_MAX]; snprintf(path, sizeof path, "%s/style.css", state.data_dir);
-    gtk_css_provider_load_from_path(provider, path);
-    gtk_style_context_add_provider_for_display(display, provider, 600);
-    g_object_unref(provider);
+    apply_theme(state.theme);
 }
 
 static void config_path(char output[PATH_MAX]) {
@@ -617,10 +618,34 @@ static void load_settings(void) {
     free(contents);
 }
 
+static bool is_system_dark(void) {
+    gboolean prefer_dark = false;
+    Ptr settings = gtk_settings_get_default ? gtk_settings_get_default() : NULL;
+    if (settings) {
+        g_object_get(settings, "gtk-application-prefer-dark-theme", &prefer_dark, NULL);
+        if (prefer_dark) return true;
+        char *theme_name = NULL;
+        g_object_get(settings, "gtk-theme-name", &theme_name, NULL);
+        if (theme_name) {
+            bool dark = (strcasestr(theme_name, "dark") != NULL ||
+                         strcasestr(theme_name, "black") != NULL ||
+                         strcasestr(theme_name, "night") != NULL ||
+                         strcasestr(theme_name, "breeze-dark") != NULL);
+            g_free(theme_name);
+            return dark;
+        }
+    }
+    return false;
+}
+
 static void apply_syntax_theme(void) {
     const char *heading = "#78a9ff", *emphasis = "#ff9f66", *code = "#c29df1";
     const char *code_background = "#252a34", *link = "#68d8e8", *list = "#68d391", *quote = "#9fa9bf";
-    if (strcmp(state.theme, "white") == 0 || strcmp(state.theme, "solarized-light") == 0) {
+    bool use_light = strcmp(state.theme, "white") == 0 || strcmp(state.theme, "solarized-light") == 0;
+    if (strcmp(state.theme, "system") == 0 && !is_system_dark()) {
+        use_light = true;
+    }
+    if (use_light) {
         heading = strcmp(state.theme, "solarized-light") == 0 ? "#268bd2" : "#0969da";
         emphasis = strcmp(state.theme, "solarized-light") == 0 ? "#cb4b16" : "#bc4c00";
         code = strcmp(state.theme, "solarized-light") == 0 ? "#6c71c4" : "#8250df";
@@ -651,14 +676,50 @@ static void apply_syntax_theme(void) {
 static void apply_theme(const char *theme) {
     if (!theme || !*theme) theme = "system";
     if (theme != state.theme) snprintf(state.theme, sizeof state.theme, "%s", theme);
-    char path[PATH_MAX]; snprintf(path, sizeof path, "%s/themes/%s.css", state.data_dir, theme);
+    
+    char theme_path[PATH_MAX], style_path[PATH_MAX];
+    snprintf(theme_path, sizeof theme_path, "%s/themes/%s.css", state.data_dir, theme);
+    snprintf(style_path, sizeof style_path, "%s/style.css", state.data_dir);
+    
+    char *theme_css = read_file(theme_path);
+    char *style_css = read_file(style_path);
+    
+    size_t theme_len = theme_css ? strlen(theme_css) : 0;
+    size_t style_len = style_css ? strlen(style_css) : 0;
+    size_t combined_len = theme_len + style_len + 128;
+    char *combined = malloc(combined_len);
+    snprintf(combined, combined_len, "%s\n%s", theme_css ? theme_css : "", style_css ? style_css : "");
+    
     Ptr display = gdk_display_get_default();
-    if (state.theme_provider && display) {
-        gtk_style_context_remove_provider_for_display(display, state.theme_provider);
-        g_object_unref(state.theme_provider); state.theme_provider = NULL;
+    if (display) {
+        if (state.theme_provider) {
+            gtk_style_context_remove_provider_for_display(display, state.theme_provider);
+            g_object_unref(state.theme_provider);
+            state.theme_provider = NULL;
+        }
+        state.theme_provider = gtk_css_provider_new();
+        gtk_css_provider_load_from_string(state.theme_provider, combined);
+        gtk_style_context_add_provider_for_display(display, state.theme_provider, 800);
     }
-    state.theme_provider = gtk_css_provider_new(); gtk_css_provider_load_from_path(state.theme_provider, path);
-    if (display) gtk_style_context_add_provider_for_display(display, state.theme_provider, 700);
+    
+    if (theme_css) free(theme_css);
+    if (style_css) free(style_css);
+    free(combined);
+    
+    Ptr settings = gtk_settings_get_default ? gtk_settings_get_default() : NULL;
+    if (settings) {
+        gboolean prefer_dark = false;
+        if (strcmp(theme, "system") == 0) {
+            prefer_dark = is_system_dark();
+        } else if (strcmp(theme, "black") == 0 || strcmp(theme, "dracula") == 0 ||
+                   strcmp(theme, "monokai") == 0 || strcmp(theme, "tokyo-night") == 0) {
+            prefer_dark = true;
+        } else {
+            prefer_dark = false;
+        }
+        g_object_set(settings, "gtk-application-prefer-dark-theme", prefer_dark, NULL);
+    }
+
     apply_syntax_theme();
     save_settings();
 }
@@ -712,6 +773,7 @@ static const char *note_display_title(const Note *note) {
 }
 
 static const char *note_display_tags(const Note *note) {
+    ensure_metadata_loaded((Note *)note);
     return note && note->dirty && note->draft ? note->draft_tags : note ? note->tags : "";
 }
 
@@ -807,6 +869,65 @@ static void extract_metadata(Note *note) {
     free(json);
 }
 
+static void ensure_metadata_loaded(Note *note) {
+    if (note && !note->metadata_loaded && !note->external) {
+        extract_metadata(note);
+        note->metadata_loaded = true;
+    }
+}
+
+static void resort_library_notes(void) {
+    if (!state.notes) return;
+    bool swapped;
+    do {
+        swapped = false;
+        Note **prev = &state.notes;
+        Note *curr = state.notes;
+        while (curr && curr->next) {
+            Note *next = curr->next;
+            bool swap_needed = false;
+            if (curr->notebook != next->notebook) {
+                if (curr->notebook > next->notebook) swap_needed = true;
+            } else {
+                if (curr->order > next->order) swap_needed = true;
+            }
+            if (swap_needed) {
+                curr->next = next->next;
+                next->next = curr;
+                *prev = next;
+                swapped = true;
+            }
+            prev = &(*prev)->next;
+            curr = *prev;
+        }
+    } while (swapped);
+}
+
+static gboolean load_next_note_metadata(Ptr unused) {
+    (void)unused;
+    bool loaded_any = false;
+    unsigned count = 0;
+    for (Note *note = state.notes; note; note = note->next) {
+        if (!note->metadata_loaded && !note->external) {
+            extract_metadata(note);
+            note->metadata_loaded = true;
+            
+            note->order = 100000;
+            for (size_t index = 0; index < note->notebook->note_order_count; index++)
+                if (strcmp(note->notebook->note_order[index], note->id) == 0) { note->order = (int)index; break; }
+
+            loaded_any = true;
+            if (++count >= 10) break;
+        }
+    }
+    if (loaded_any) {
+        resort_library_notes();
+        if (state.sidebar) rebuild_sidebar();
+        return true;
+    }
+    return false;
+}
+
 static void extract_notebook_metadata(Notebook *notebook) {
     char path[PATH_MAX]; snprintf(path, sizeof path, "%s/.notebook.json", notebook->path);
     char *json = read_file(path), *color = strstr(json, "\"colorHex\"");
@@ -869,6 +990,13 @@ static void safe_title(const char *input, char output[256]) {
 }
 
 static bool write_atomic(const char *path, const char *content) {
+    if (strstr(path, "/gvfs/") != NULL || strstr(path, "/dav:") != NULL || strstr(path, "/davs:") != NULL) {
+        FILE *file = fopen(path, "wb");
+        if (!file) return false;
+        size_t length = strlen(content);
+        bool ok = fwrite(content, 1, length, file) == length && fclose(file) == 0;
+        return ok;
+    }
     char temporary[PATH_MAX];
     snprintf(temporary, sizeof temporary, "%s.tmp", path);
     FILE *file = fopen(temporary, "wb");
@@ -953,7 +1081,8 @@ static void load_library(void) {
         if (book_entry->d_name[0] == '.') continue;
         char book_path[PATH_MAX];
         snprintf(book_path, sizeof book_path, "%s/%s", state.root, book_entry->d_name);
-        if (!is_directory(book_path)) continue;
+        bool is_book_dir = (book_entry->d_type == DT_DIR) || (book_entry->d_type == DT_UNKNOWN && is_directory(book_path));
+        if (!is_book_dir) continue;
         Notebook *notebook = calloc(1, sizeof *notebook);
         notebook->expanded = true;
         snprintf(notebook->title, sizeof notebook->title, "%s", book_entry->d_name);
@@ -968,17 +1097,15 @@ static void load_library(void) {
             char note_path[PATH_MAX], markdown_path[PATH_MAX];
             snprintf(note_path, sizeof note_path, "%s/%s", book_path, note_entry->d_name);
             snprintf(markdown_path, sizeof markdown_path, "%s/note.md", note_path);
-            if (!is_directory(note_path) || access(markdown_path, R_OK) != 0) continue;
+            bool is_note_dir = (note_entry->d_type == DT_DIR) || (note_entry->d_type == DT_UNKNOWN && is_directory(note_path));
+            if (!is_note_dir) continue;
             Note *note = calloc(1, sizeof *note);
             snprintf(note->title, sizeof note->title, "%s", note_entry->d_name);
             snprintf(note->directory, sizeof note->directory, "%s", note_path);
             snprintf(note->markdown_path, sizeof note->markdown_path, "%s", markdown_path);
             note->notebook = notebook;
-            extract_metadata(note);
-            if (!note->id[0]) make_uuid(note->id);
+            make_uuid(note->id); // temporary UUID until metadata is loaded in background
             note->order = 100000;
-            for (size_t index = 0; index < notebook->note_order_count; index++)
-                if (strcmp(notebook->note_order[index], note->id) == 0) { note->order = (int)index; break; }
             Note **place = &state.notes;
             while (*place && ((*place)->notebook != notebook || (*place)->order <= note->order)) place = &(*place)->next;
             note->next = *place; *place = note;
@@ -999,6 +1126,7 @@ static void add_library_color_class(Ptr widget, const char *color) {
 }
 
 static void append_note_button(Note *note, Ptr container) {
+    ensure_metadata_loaded(note);
     Ptr button = text_button(note_display_title(note), "sidebar-note");
     add_library_color_class(button, note->color);
     g_signal_connect_data(button, "clicked", (void *)select_note, note, NULL, 0);
@@ -2854,27 +2982,26 @@ static void show_preferences(Ptr button, Ptr unused) {
     gtk_box_append(box, gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
     Ptr themes_label = gtk_label_new(tr("Tema do editor")); gtk_label_set_xalign(themes_label, 0.0f);
     gtk_widget_add_css_class(themes_label, "settings-label"); gtk_box_append(box, themes_label);
-    struct { const char *label, *id; } themes[] = {
-        {"Branco", "white"}, {"Preto", "black"}, {tr("Sistema"), "system"}, {"Monokai", "monokai"}, {"Tokyo Night", "tokyo-night"},
-        {"Dracula", "dracula"}, {"Solarized Light", "solarized-light"}
-    };
+    static const char *theme_ids[] = {"white", "black", "system", "monokai", "tokyo-night", "dracula", "solarized-light"};
+    const char *theme_labels[] = {"Branco", "Preto", tr("Sistema"), "Monokai", "Tokyo Night", "Dracula", "Solarized Light"};
     Ptr theme_rows = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5); Ptr row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    for (size_t index = 0; index < sizeof themes / sizeof themes[0]; index++) {
+    for (size_t index = 0; index < sizeof theme_ids / sizeof theme_ids[0]; index++) {
         if (index == 4) { gtk_box_append(theme_rows, row); row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5); }
-        Ptr choice = gtk_button_new_with_label(themes[index].label);
-        gtk_widget_add_css_class(choice, strcmp(state.theme, themes[index].id) == 0 ? "selected-setting" : "setting-choice");
-        g_signal_connect_data(choice, "clicked", (void *)choose_theme, (Ptr)themes[index].id, NULL, 0);
+        Ptr choice = gtk_button_new_with_label(theme_labels[index]);
+        gtk_widget_add_css_class(choice, strcmp(state.theme, theme_ids[index]) == 0 ? "selected-setting" : "setting-choice");
+        g_signal_connect_data(choice, "clicked", (void *)choose_theme, (Ptr)theme_ids[index], NULL, 0);
         gtk_box_append(row, choice);
     }
     gtk_box_append(theme_rows, row); gtk_box_append(box, theme_rows);
     Ptr language_label = gtk_label_new("Idioma / Language / Langue"); gtk_label_set_xalign(language_label, 0.0f);
     gtk_widget_add_css_class(language_label, "settings-label"); gtk_box_append(box, language_label);
     Ptr languages = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    struct { const char *label, *id; } language_values[] = {{"Português", "pt"}, {"English", "en"}, {"Français", "fr"}};
-    for (size_t index = 0; index < sizeof language_values / sizeof language_values[0]; index++) {
-        Ptr choice = gtk_button_new_with_label(language_values[index].label);
-        gtk_widget_add_css_class(choice, strcmp(state.language, language_values[index].id) == 0 ? "selected-setting" : "setting-choice");
-        g_signal_connect_data(choice, "clicked", (void *)language_changed, (Ptr)language_values[index].id, NULL, 0);
+    static const char *lang_ids[] = {"pt", "en", "fr"};
+    const char *lang_labels[] = {"Português", "English", "Français"};
+    for (size_t index = 0; index < sizeof lang_ids / sizeof lang_ids[0]; index++) {
+        Ptr choice = gtk_button_new_with_label(lang_labels[index]);
+        gtk_widget_add_css_class(choice, strcmp(state.language, lang_ids[index]) == 0 ? "selected-setting" : "setting-choice");
+        g_signal_connect_data(choice, "clicked", (void *)language_changed, (Ptr)lang_ids[index], NULL, 0);
         gtk_box_append(languages, choice);
     }
     gtk_box_append(box, languages);
@@ -3436,6 +3563,7 @@ static void content_changed(Ptr object, Ptr unused) {
 
 static void select_note(Ptr button, Ptr user_data) {
     (void)button; Note *target = user_data; if (!target) return;
+    ensure_metadata_loaded(target);
     if (state.active == target) {
         state.active_notebook = target->notebook;
         if (target->button) gtk_widget_add_css_class(target->button, "selected-item");
@@ -4375,6 +4503,11 @@ int main(int argc, char **argv) {
     load_gtk(); load_settings(); resolve_root(); resolve_data_dir();
     if (ui_test) { state.ui_test = true; state.empty_ui_test = empty_ui_test; state.external_count = 0; if (!prepare_ui_test()) return 1; }
     load_library(); if (!ui_test) restore_recovery();
+    if (ui_test) {
+        while (load_next_note_metadata(NULL));
+    } else {
+        g_timeout_add(50, (void *)load_next_note_metadata, NULL);
+    }
     for (size_t index = 0; index < state.external_count; index++) add_external_note(state.external_paths[index]);
     int application_flags = G_APPLICATION_HANDLES_OPEN | (new_instance ? G_APPLICATION_NON_UNIQUE : 0);
     state.app = gtk_application_new("pt.notemd.NoteMD", application_flags);

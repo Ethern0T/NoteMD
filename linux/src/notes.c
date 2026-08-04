@@ -197,7 +197,8 @@ void load_library(void) {
         if (book_entry->d_name[0] == '.') continue;
         char book_path[PATH_MAX];
         snprintf(book_path, sizeof book_path, "%s/%s", state.root, book_entry->d_name);
-        if (!is_directory(book_path)) continue;
+        bool is_book_dir = (book_entry->d_type == DT_DIR) || (book_entry->d_type == DT_UNKNOWN && is_directory(book_path));
+        if (!is_book_dir) continue;
         Notebook *notebook = calloc(1, sizeof *notebook);
         notebook->expanded = true;
         snprintf(notebook->title, sizeof notebook->title, "%s", book_entry->d_name);
@@ -212,17 +213,15 @@ void load_library(void) {
             char note_path[PATH_MAX], markdown_path[PATH_MAX];
             snprintf(note_path, sizeof note_path, "%s/%s", book_path, note_entry->d_name);
             snprintf(markdown_path, sizeof markdown_path, "%s/note.md", note_path);
-            if (!is_directory(note_path) || access(markdown_path, R_OK) != 0) continue;
+            bool is_note_dir = (note_entry->d_type == DT_DIR) || (note_entry->d_type == DT_UNKNOWN && is_directory(note_path));
+            if (!is_note_dir) continue;
             Note *note = calloc(1, sizeof *note);
             snprintf(note->title, sizeof note->title, "%s", note_entry->d_name);
             snprintf(note->directory, sizeof note->directory, "%s", note_path);
             snprintf(note->markdown_path, sizeof note->markdown_path, "%s", markdown_path);
             note->notebook = notebook;
-            extract_metadata(note);
-            if (!note->id[0]) make_uuid(note->id);
+            make_uuid(note->id); // temporary UUID until metadata is loaded in background
             note->order = 100000;
-            for (size_t index = 0; index < notebook->note_order_count; index++)
-                if (strcmp(notebook->note_order[index], note->id) == 0) { note->order = (int)index; break; }
             Note **place = &state.notes;
             while (*place && ((*place)->notebook != notebook || (*place)->order <= note->order)) place = &(*place)->next;
             note->next = *place; *place = note;

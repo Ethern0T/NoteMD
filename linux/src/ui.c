@@ -30,11 +30,35 @@ void load_settings(void) {
     }
     free(contents);
 }
+static bool is_system_dark(void) {
+    gboolean prefer_dark = false;
+    Ptr settings = gtk_settings_get_default ? gtk_settings_get_default() : NULL;
+    if (settings) {
+        g_object_get(settings, "gtk-application-prefer-dark-theme", &prefer_dark, NULL);
+        if (prefer_dark) return true;
+        char *theme_name = NULL;
+        g_object_get(settings, "gtk-theme-name", &theme_name, NULL);
+        if (theme_name) {
+            bool dark = (strcasestr(theme_name, "dark") != NULL ||
+                         strcasestr(theme_name, "black") != NULL ||
+                         strcasestr(theme_name, "night") != NULL ||
+                         strcasestr(theme_name, "breeze-dark") != NULL);
+            g_free(theme_name);
+            return dark;
+        }
+    }
+    return false;
+}
+
 void apply_syntax_theme(void) {
     const char *heading = "#78a9ff", *emphasis = "#ff9f66", *code = "#c29df1";
     const char *code_background = "#252a34", *link = "#68d8e8", *list = "#68d391", *quote = "#9fa9bf";
 
-    if (strcmp(state.theme, "white") == 0 || strcmp(state.theme, "solarized-light") == 0) {
+    bool use_light = strcmp(state.theme, "white") == 0 || strcmp(state.theme, "solarized-light") == 0;
+    if (strcmp(state.theme, "system") == 0 && !is_system_dark()) {
+        use_light = true;
+    }
+    if (use_light) {
         heading = strcmp(state.theme, "solarized-light") == 0 ? "#268bd2" : "#0969da";
         emphasis = strcmp(state.theme, "solarized-light") == 0 ? "#cb4b16" : "#bc4c00";
         code = strcmp(state.theme, "solarized-light") == 0 ? "#6c71c4" : "#8250df";
@@ -73,7 +97,23 @@ void apply_theme(const char *theme) {
     }
     state.theme_provider = gtk_css_provider_new(); gtk_css_provider_load_from_path(state.theme_provider, path);
     if (display) gtk_style_context_add_provider_for_display(display, state.theme_provider, 700);
+
+    Ptr settings = gtk_settings_get_default ? gtk_settings_get_default() : NULL;
+    if (settings) {
+        gboolean prefer_dark = false;
+        if (strcmp(theme, "system") == 0) {
+            prefer_dark = is_system_dark();
+        } else if (strcmp(theme, "black") == 0 || strcmp(theme, "dracula") == 0 ||
+                   strcmp(theme, "monokai") == 0 || strcmp(theme, "tokyo-night") == 0) {
+            prefer_dark = true;
+        } else {
+            prefer_dark = false;
+        }
+        g_object_set(settings, "gtk-application-prefer-dark-theme", prefer_dark, NULL);
+    }
+
     apply_syntax_theme();
+    load_style();
     save_settings();
 }
 void rebuild_sidebar(void) {
@@ -167,27 +207,26 @@ void show_preferences(Ptr button, Ptr unused) {
     gtk_box_append(box, gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
     Ptr themes_label = gtk_label_new(tr("Tema do editor")); gtk_label_set_xalign(themes_label, 0.0f);
     gtk_widget_add_css_class(themes_label, "settings-label"); gtk_box_append(box, themes_label);
-    struct { const char *label, *id; } themes[] = {
-        {"Branco", "white"}, {"Preto", "black"}, {tr("Sistema"), "system"}, {"Monokai", "monokai"}, {"Tokyo Night", "tokyo-night"},
-        {"Dracula", "dracula"}, {"Solarized Light", "solarized-light"}
-    };
+    static const char *theme_ids[] = {"white", "black", "system", "monokai", "tokyo-night", "dracula", "solarized-light"};
+    const char *theme_labels[] = {"Branco", "Preto", tr("Sistema"), "Monokai", "Tokyo Night", "Dracula", "Solarized Light"};
     Ptr theme_rows = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5); Ptr row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    for (size_t index = 0; index < sizeof themes / sizeof themes[0]; index++) {
+    for (size_t index = 0; index < sizeof theme_ids / sizeof theme_ids[0]; index++) {
         if (index == 4) { gtk_box_append(theme_rows, row); row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5); }
-        Ptr choice = gtk_button_new_with_label(themes[index].label);
-        gtk_widget_add_css_class(choice, strcmp(state.theme, themes[index].id) == 0 ? "selected-setting" : "setting-choice");
-        g_signal_connect_data(choice, "clicked", (void *)choose_theme, (Ptr)themes[index].id, NULL, 0);
+        Ptr choice = gtk_button_new_with_label(theme_labels[index]);
+        gtk_widget_add_css_class(choice, strcmp(state.theme, theme_ids[index]) == 0 ? "selected-setting" : "setting-choice");
+        g_signal_connect_data(choice, "clicked", (void *)choose_theme, (Ptr)theme_ids[index], NULL, 0);
         gtk_box_append(row, choice);
     }
     gtk_box_append(theme_rows, row); gtk_box_append(box, theme_rows);
     Ptr language_label = gtk_label_new("Idioma / Language / Langue"); gtk_label_set_xalign(language_label, 0.0f);
     gtk_widget_add_css_class(language_label, "settings-label"); gtk_box_append(box, language_label);
     Ptr languages = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    struct { const char *label, *id; } language_values[] = {{"Português", "pt"}, {"English", "en"}, {"Français", "fr"}};
-    for (size_t index = 0; index < sizeof language_values / sizeof language_values[0]; index++) {
-        Ptr choice = gtk_button_new_with_label(language_values[index].label);
-        gtk_widget_add_css_class(choice, strcmp(state.language, language_values[index].id) == 0 ? "selected-setting" : "setting-choice");
-        g_signal_connect_data(choice, "clicked", (void *)language_changed, (Ptr)language_values[index].id, NULL, 0);
+    static const char *lang_ids[] = {"pt", "en", "fr"};
+    const char *lang_labels[] = {"Português", "English", "Français"};
+    for (size_t index = 0; index < sizeof lang_ids / sizeof lang_ids[0]; index++) {
+        Ptr choice = gtk_button_new_with_label(lang_labels[index]);
+        gtk_widget_add_css_class(choice, strcmp(state.language, lang_ids[index]) == 0 ? "selected-setting" : "setting-choice");
+        g_signal_connect_data(choice, "clicked", (void *)language_changed, (Ptr)lang_ids[index], NULL, 0);
         gtk_box_append(languages, choice);
     }
     gtk_box_append(box, languages);

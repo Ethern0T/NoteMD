@@ -154,6 +154,7 @@ void (*gtk_widget_set_margin_bottom) (Ptr, int);
 Ptr (*gtk_separator_new) (int);
 Ptr (*gtk_css_provider_new) (void);
 void (*gtk_css_provider_load_from_path) (Ptr, const char *);
+void (*gtk_css_provider_load_from_string) (Ptr, const char *);
 Ptr (*gdk_display_get_default) (void);
 Ptr (*gdk_display_get_clipboard) (Ptr);
 Ptr (*gdk_clipboard_get_formats) (Ptr);
@@ -251,7 +252,7 @@ void load_gtk(void) {
     LOAD(gtk_image_new_from_file); LOAD(gtk_image_new_from_icon_name); LOAD(gtk_image_set_pixel_size);
     LOAD(gtk_widget_set_margin_start);
     LOAD(gtk_widget_set_margin_end); LOAD(gtk_widget_set_margin_top); LOAD(gtk_widget_set_margin_bottom);
-    LOAD(gtk_separator_new); LOAD(gtk_css_provider_new); LOAD(gtk_css_provider_load_from_path);
+    LOAD(gtk_separator_new); LOAD(gtk_css_provider_new); LOAD(gtk_css_provider_load_from_path); LOAD(gtk_css_provider_load_from_string);
     LOAD(gdk_display_get_default); LOAD(gdk_display_get_clipboard); LOAD(gdk_clipboard_get_formats);
     LOAD(gdk_content_formats_contain_gtype); LOAD(gdk_texture_get_type); LOAD(gdk_clipboard_read_texture_async);
     LOAD(gdk_clipboard_read_texture_finish); LOAD(gdk_texture_save_to_png); LOAD(gtk_style_context_add_provider_for_display);
