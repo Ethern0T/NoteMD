@@ -358,6 +358,9 @@ FN(void, g_error_free, (Ptr));
 FN(guint, g_timeout_add, (guint, void *, Ptr));
 FN(guint, g_idle_add, (void *, Ptr));
 FN(gboolean, g_source_remove, (guint));
+FN(void, gtk_label_set_ellipsize, (Ptr, int));
+FN(void, gtk_label_set_max_width_chars, (Ptr, int));
+FN(void, gtk_editable_set_width_chars, (Ptr, int));
 FN(Ptr, gtk_image_new_from_file, (const char *));
 FN(Ptr, gtk_image_new_from_icon_name, (const char *));
 FN(void, gtk_image_set_pixel_size, (Ptr, int));
@@ -510,6 +513,7 @@ static void load_gtk(void) {
     LOAD(gtk_stack_switcher_set_stack); LOAD(gtk_drop_down_new_from_strings); LOAD(gtk_drop_down_set_selected);
     LOAD(gtk_drop_down_get_selected); LOAD(g_free); LOAD(g_error_free);
     LOAD(g_timeout_add); LOAD(g_idle_add); LOAD(g_source_remove); LOAD(gtk_file_chooser_native_new);
+    LOAD(gtk_label_set_ellipsize); LOAD(gtk_label_set_max_width_chars); LOAD(gtk_editable_set_width_chars);
     LOAD(gtk_file_chooser_get_file); LOAD(g_file_get_path); LOAD(gtk_native_dialog_show);
     LOAD(gtk_file_chooser_set_current_name);
     LOAD(g_file_new_for_path); LOAD(g_file_trash);
@@ -1458,14 +1462,19 @@ static void rebuild_tabs(void) {
         if (note == state.active) {
             tab = gtk_entry_new();
             gtk_editable_set_text(tab, note_display_title(note));
+            if (gtk_editable_set_width_chars) gtk_editable_set_width_chars(tab, 10);
             gtk_widget_add_css_class(tab, "tab");
             gtk_widget_add_css_class(tab, "active-tab");
             gtk_widget_add_css_class(tab, "tab-title");
-            gtk_widget_set_size_request(tab, 100, -1);
             g_signal_connect_data(tab, "changed", (void *)active_tab_title_changed, note, NULL, 0);
         } else {
-            tab = text_button(note_display_title(note), "tab");
-            gtk_widget_set_size_request(tab, 100, -1);
+            tab = gtk_button_new_with_label("");
+            Ptr label = gtk_label_new(note_display_title(note));
+            if (gtk_label_set_max_width_chars) gtk_label_set_max_width_chars(label, 10);
+            if (gtk_label_set_ellipsize) gtk_label_set_ellipsize(label, 3);
+            gtk_label_set_xalign(label, 0.0f);
+            gtk_button_set_child(tab, label);
+            gtk_widget_add_css_class(tab, "tab");
             g_signal_connect_data(tab, "clicked", (void *)select_note, note, NULL, 0);
         }
         gtk_box_append(state.tabbar, tab);

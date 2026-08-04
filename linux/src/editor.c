@@ -123,14 +123,19 @@ void rebuild_tabs(void) {
         if (note == state.active) {
             tab = gtk_entry_new();
             gtk_editable_set_text(tab, note_display_title(note));
+            if (gtk_editable_set_width_chars) gtk_editable_set_width_chars(tab, 10);
             gtk_widget_add_css_class(tab, "tab");
             gtk_widget_add_css_class(tab, "active-tab");
             gtk_widget_add_css_class(tab, "tab-title");
-            gtk_widget_set_size_request(tab, 100, -1);
             g_signal_connect_data(tab, "changed", (void *)active_tab_title_changed, note, NULL, 0);
         } else {
-            tab = text_button(note_display_title(note), "tab");
-            gtk_widget_set_size_request(tab, 100, -1);
+            tab = gtk_button_new_with_label("");
+            Ptr label = gtk_label_new(note_display_title(note));
+            if (gtk_label_set_max_width_chars) gtk_label_set_max_width_chars(label, 10);
+            if (gtk_label_set_ellipsize) gtk_label_set_ellipsize(label, 3);
+            gtk_label_set_xalign(label, 0.0f);
+            gtk_button_set_child(tab, label);
+            gtk_widget_add_css_class(tab, "tab");
             g_signal_connect_data(tab, "clicked", (void *)select_note, note, NULL, 0);
         }
         gtk_box_append(state.tabbar, tab);
