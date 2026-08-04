@@ -1,48 +1,40 @@
 # NoteMD para Linux (GTK 4)
 
-Implementação nativa compilada em C17 com GTK 4, 
+Implementação nativa compilada em C17 com GTK 4 para Linux.
 
-## Executar
+## Compilar e Executar
 
-ompilador C. A aplicação liga dinamicamente à biblioteca GTK 4
-do sistema e não necessita dos headers GTK para esta primeira etapa.
+A aplicação liga dinamicamente à biblioteca GTK 4 do sistema.
 
 ```sh
-make -C linux
-./linux/build/notemd
+make
+./build/notemd
 ```
 
-Para instalar no menu de aplicações do utilizador, com o ícone oficial:
+Para instalar no menu de aplicações do utilizador com o ícone oficial:
 
 ```sh
-make -C linux install-user
+make install-user
 ```
 
-Para criar um pacote Debian/Ubuntu instalável:
+Para criar e instalar o pacote Debian/Ubuntu (`.deb`):
 
 ```sh
-make -C linux deb
-sudo apt install ./linux/build/notemd_1.2.0_amd64.deb
+make deb
+sudo apt install ./build/notemd_1.2.0_amd64.deb
 ```
 
-Em Fedora:
+## Diretório de Notas
+
+Por predefinição, a aplicação usa `~/Documents/NoteMD`. Para especificar um diretório personalizado:
 
 ```sh
-sudo dnf install gtk4
-make -C linux
-./linux/build/notemd
-```
-
-Por predefinição, a aplicação usa `~/Documents/NoteMD`. Para escolher a mesma
-pasta usada no macOS:
-
-```sh
-NOTEMD_NOTES_DIR=/caminho/para/notas ./linux/build/notemd
+NOTEMD_NOTES_DIR=/caminho/para/notas ./build/notemd
 ```
 
 ## Testes
 
 ```sh
-./linux/build/notemd --self-test
-./linux/build/notemd --export-self-test
+./build/notemd --self-test
+./build/notemd --ui-self-test
 ```

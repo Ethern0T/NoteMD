@@ -1,32 +1,24 @@
 <div align="center">
-  <img src="Assets/NoteMD-AppIcon-1024.png" alt="Ícone do NoteMD" width="140">
+  <img src="macOS/Assets/NoteMD-AppIcon-1024.png" alt="Ícone do NoteMD" width="120">
 
   # NoteMD
 
-  Editor Markdown local para macOS — versão 1.2. A versão nativa GTK 4 para Linux
- em [`linux/`](linux/README.md).
+  Editor Markdown local e nativo para **macOS** e **Linux**.
 </div>
 
-## Funções
+## Funcionalidades
 
-- Notas organizadas em notebooks, separadores, tags e cores.
-- Editor Markdown, editor visual e vista dividida com pré-visualização.
-- Temas Sistema, Monokai, Tokyo Night, Dracula e Solarized Light.
-- Formatação de títulos, listas, tarefas, citações, tabelas, ligações e código.
-- Pesquisa global e pesquisa/substituição dentro da nota.
-- Ligações `[[entre notas]]` e backlinks.
-- Abertura e edição direta de ficheiros `.md` externos.
-- Deteção de alterações feitas noutras aplicações.
-- Drag-and-drop de Markdown e imagens.
-- Movimento e ordenação manual de notas.
-- Gravação automática, recuperação e histórico de versões.
-- Templates para reuniões, diário, projetos e checklists.
-- Exportação para PDF com imagens, HTML e DOCX.
-- Interface em português, inglês e francês.
+- **Organização**: Notebooks, separadores, tags, cores e pesquisa global.
+- **Modos de edição**: Editor Markdown, editor visual e modo dividido com pré-visualização.
+- **Suporte Markdown**: Títulos, tabelas, código, listas, tarefas, citações e ligações `[[wiki]]`.
+- **Ficheiros e armazenamento**: Leitura/edição de ficheiros `.md` locais e externos, deteção de alterações externas.
+- **Histórico e segurança**: Gravação automática, recuperação de rascunhos e histórico de versões.
+- **Exportação e utilitários**: Exportação para PDF, HTML e DOCX. Templates para reuniões, diários e projetos.
+- **Personalização**: Temas de cor (Sistema, Claro, Escuro, Monokai, Tokyo Night, Dracula, Solarized Light) e suporte multilíngue (Português, Inglês, Francês).
 
-## Armazenamento
+## Estrutura de Ficheiros
 
-As notas são guardadas localmente na pasta escolhida:
+As notas são guardadas localmente em ficheiros Markdown numa estrutura transparente:
 
 ```text
 Pasta das notas/
@@ -37,23 +29,37 @@ Pasta das notas/
         └── assets/
 ```
 
-Ficheiros externos permanecem no local original. O NoteMD não exige conta nem
-envia o conteúdo das notas para serviços externos.
+O NoteMD é 100% local, não exige conta nem envia dados para a nuvem.
 
-## Requisitos
+## Instalação e Compilação
 
-- macOS 14 ou posterior.
-- Swift 6 para compilação.
+### Linux (GTK 4 / C17)
 
-## Compilar
+Ver detalhes no diretório [`linux/`](linux/).
 
 ```shell
+cd linux
+make
+make install-user
+# Gerar pacote Debian (.deb):
+make deb
+```
+
+**Requisitos**: GTK 4, compilador C17 (`gcc` ou `clang`).
+
+---
+
+### macOS (SwiftUI)
+
+Ver detalhes no diretório [`macOS/`](macOS/).
+
+```shell
+cd macOS
 swift build -c release
 ```
 
-O executável é criado em `.build/arm64-apple-macosx/release/NoteMD` em Macs com
-Apple Silicon.
+**Requisitos**: macOS 14 ou posterior, Swift 6.
 
 ## Licença
 
-Consulte [LICENSE](LICENSE).
+[MIT License](LICENSE)

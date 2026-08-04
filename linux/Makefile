@@ -17,8 +17,8 @@ run: build/notemd
 install-user: build/notemd
 	install -Dm755 build/notemd $(HOME)/.local/bin/notemd
 	install -Dm644 packaging/pt.notemd.NoteMD.desktop $(HOME)/.local/share/applications/pt.notemd.NoteMD.desktop
-	install -Dm644 ../Assets/NoteMD-AppIcon-1024.png $(HOME)/.local/share/icons/hicolor/1024x1024/apps/pt.notemd.NoteMD.png
-	install -Dm644 ../Assets/NoteMD-AppIcon-1024.png $(HOME)/.local/share/notemd/NoteMD-AppIcon-1024.png
+	install -Dm644 ../macOS/Assets/NoteMD-AppIcon-1024.png $(HOME)/.local/share/icons/hicolor/1024x1024/apps/pt.notemd.NoteMD.png
+	install -Dm644 ../macOS/Assets/NoteMD-AppIcon-1024.png $(HOME)/.local/share/notemd/NoteMD-AppIcon-1024.png
 	sed -i 's|^Exec=.*|Exec=$(HOME)/.local/bin/notemd %F|' $(HOME)/.local/share/applications/pt.notemd.NoteMD.desktop
 	sed -i 's|^Icon=.*|Icon=$(HOME)/.local/share/icons/hicolor/1024x1024/apps/pt.notemd.NoteMD.png|' $(HOME)/.local/share/applications/pt.notemd.NoteMD.desktop
 	install -Dm644 style.css $(HOME)/.local/share/notemd/style.css
@@ -47,8 +47,8 @@ deb: build/notemd
 	install -Dm644 packaging/debian-control build/deb/DEBIAN/control
 	install -Dm644 packaging/pt.notemd.NoteMD.desktop build/deb/usr/share/applications/pt.notemd.NoteMD.desktop
 	install -Dm644 packaging/pt.notemd.NoteMD.metainfo.xml build/deb/usr/share/metainfo/pt.notemd.NoteMD.metainfo.xml
-	install -Dm644 ../Assets/NoteMD-AppIcon-1024.png build/deb/usr/share/icons/hicolor/1024x1024/apps/pt.notemd.NoteMD.png
-	install -Dm644 ../Assets/NoteMD-AppIcon-1024.png build/deb/usr/share/notemd/NoteMD-AppIcon-1024.png
+	install -Dm644 ../macOS/Assets/NoteMD-AppIcon-1024.png build/deb/usr/share/icons/hicolor/1024x1024/apps/pt.notemd.NoteMD.png
+	install -Dm644 ../macOS/Assets/NoteMD-AppIcon-1024.png build/deb/usr/share/notemd/NoteMD-AppIcon-1024.png
 	sed -i 's|^Exec=.*|Exec=/usr/bin/notemd %F|' build/deb/usr/share/applications/pt.notemd.NoteMD.desktop
 	sed -i 's|^Icon=.*|Icon=/usr/share/icons/hicolor/1024x1024/apps/pt.notemd.NoteMD.png|' build/deb/usr/share/applications/pt.notemd.NoteMD.desktop
 	install -Dm644 style.css build/deb/usr/share/notemd/style.css
