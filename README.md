@@ -5,7 +5,14 @@
 
   Editor Markdown local e nativo para **macOS** e **Linux**.
 </div>
-
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-14+-black?logo=apple" alt="macOS">
+  <img src="https://img.shields.io/badge/Linux-GTK%204-FCC624?logo=linux" alt="Linux">
+  <img src="https://img.shields.io/badge/Swift-6-orange?logo=swift" alt="Swift">
+  <img src="https://img.shields.io/badge/C-C17-A8B9CC?logo=c" alt="C17">
+  <img src="https://img.shields.io/github/license/Ethern0T/NoteMD" alt="License">
+  <img src="https://img.shields.io/github/last-commit/Ethern0T/NoteMD" alt="Last Commit">
+</p>
 ## Funcionalidades
 
 - **Organização**: Notebooks, separadores, tags, cores e pesquisa global.
