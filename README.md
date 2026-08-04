@@ -13,6 +13,7 @@
   <img src="https://img.shields.io/github/license/Ethern0T/NoteMD" alt="License">
   <img src="https://img.shields.io/github/last-commit/Ethern0T/NoteMD" alt="Last Commit">
 </p>
+
 ## Funcionalidades
 
 - **Organização**: Notebooks, separadores, tags, cores e pesquisa global.
