@@ -126,10 +126,11 @@ void rebuild_tabs(void) {
             gtk_widget_add_css_class(tab, "tab");
             gtk_widget_add_css_class(tab, "active-tab");
             gtk_widget_add_css_class(tab, "tab-title");
-            gtk_widget_set_size_request(tab, 120, -1);
+            gtk_widget_set_size_request(tab, 100, -1);
             g_signal_connect_data(tab, "changed", (void *)active_tab_title_changed, note, NULL, 0);
         } else {
             tab = text_button(note_display_title(note), "tab");
+            gtk_widget_set_size_request(tab, 100, -1);
             g_signal_connect_data(tab, "clicked", (void *)select_note, note, NULL, 0);
         }
         gtk_box_append(state.tabbar, tab);
@@ -1622,7 +1623,7 @@ void library_menu_clicked(Ptr button, Ptr user_data) {
     margins(box, 10, 10); gtk_popover_set_child(popover, box); present_popover(popover, anchor);
 }
 Ptr library_menu_button(Ptr target, bool notebook) {
-    Ptr button = icon_button("color-select-symbolic", notebook ? "Cor e ações do notebook" : "Cor e ações da nota");
+    Ptr button = icon_button("view-more-symbolic", notebook ? "Ações do notebook" : "Ações da nota");
     gtk_widget_add_css_class(button, "item-menu");
     ContextTarget *context = calloc(1, sizeof *context); context->widget = button; context->target = target; context->notebook = notebook;
     g_signal_connect_data(button, "clicked", (void *)library_menu_clicked, context, (void *)free_signal_data, 0);

@@ -203,7 +203,6 @@ void load_library(void) {
         notebook->expanded = true;
         snprintf(notebook->title, sizeof notebook->title, "%s", book_entry->d_name);
         snprintf(notebook->path, sizeof notebook->path, "%s", book_path);
-        extract_notebook_metadata(notebook);
         notebook->next = state.notebooks; state.notebooks = notebook;
         DIR *book = opendir(book_path);
         if (!book) continue;

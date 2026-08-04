@@ -143,6 +143,7 @@ guint (*gtk_drop_down_get_selected) (Ptr);
 void (*g_free) (Ptr);
 void (*g_error_free) (Ptr);
 guint (*g_timeout_add) (guint, void *, Ptr);
+guint (*g_idle_add) (void *, Ptr);
 gboolean (*g_source_remove) (guint);
 Ptr (*gtk_image_new_from_file) (const char *);
 Ptr (*gtk_image_new_from_icon_name) (const char *);

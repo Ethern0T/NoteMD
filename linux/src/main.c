@@ -13,6 +13,7 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+#include <pthread.h>
 
 typedef void *Ptr;
 typedef int gboolean;
@@ -38,6 +39,7 @@ typedef struct Notebook {
     char path[PATH_MAX];
     bool external;
     bool expanded;
+    bool metadata_loaded;
     char note_order[128][64];
     size_t note_order_count;
     Ptr button, add_button, menu_button, expander, context_gesture;
@@ -354,6 +356,7 @@ FN(guint, gtk_drop_down_get_selected, (Ptr));
 FN(void, g_free, (Ptr));
 FN(void, g_error_free, (Ptr));
 FN(guint, g_timeout_add, (guint, void *, Ptr));
+FN(guint, g_idle_add, (void *, Ptr));
 FN(gboolean, g_source_remove, (guint));
 FN(Ptr, gtk_image_new_from_file, (const char *));
 FN(Ptr, gtk_image_new_from_icon_name, (const char *));
@@ -506,7 +509,7 @@ static void load_gtk(void) {
     LOAD(gtk_stack_add_titled); LOAD(gtk_stack_set_visible_child_name); LOAD(gtk_stack_get_visible_child_name); LOAD(gtk_stack_switcher_new);
     LOAD(gtk_stack_switcher_set_stack); LOAD(gtk_drop_down_new_from_strings); LOAD(gtk_drop_down_set_selected);
     LOAD(gtk_drop_down_get_selected); LOAD(g_free); LOAD(g_error_free);
-    LOAD(g_timeout_add); LOAD(g_source_remove); LOAD(gtk_file_chooser_native_new);
+    LOAD(g_timeout_add); LOAD(g_idle_add); LOAD(g_source_remove); LOAD(gtk_file_chooser_native_new);
     LOAD(gtk_file_chooser_get_file); LOAD(g_file_get_path); LOAD(gtk_native_dialog_show);
     LOAD(gtk_file_chooser_set_current_name);
     LOAD(g_file_new_for_path); LOAD(g_file_trash);
@@ -903,29 +906,61 @@ static void resort_library_notes(void) {
     } while (swapped);
 }
 
-static gboolean load_next_note_metadata(Ptr unused) {
+static bool indexer_running = false;
+
+static gboolean ui_metadata_updated(Ptr unused) {
     (void)unused;
-    bool loaded_any = false;
+    resort_library_notes();
+    if (state.sidebar) rebuild_sidebar();
+    if (state.tag_box) rebuild_tags();
+    return 0;
+}
+
+static void extract_notebook_metadata(Notebook *notebook);
+
+static void *background_metadata_indexer(void *arg) {
+    (void)arg;
+    for (Notebook *book = state.notebooks; book; book = book->next) {
+        if (!book->metadata_loaded) {
+            extract_notebook_metadata(book);
+            book->metadata_loaded = true;
+        }
+    }
     unsigned count = 0;
     for (Note *note = state.notes; note; note = note->next) {
         if (!note->metadata_loaded && !note->external) {
             extract_metadata(note);
             note->metadata_loaded = true;
-            
             note->order = 100000;
-            for (size_t index = 0; index < note->notebook->note_order_count; index++)
-                if (strcmp(note->notebook->note_order[index], note->id) == 0) { note->order = (int)index; break; }
-
-            loaded_any = true;
-            if (++count >= 10) break;
+            if (note->notebook) {
+                for (size_t index = 0; index < note->notebook->note_order_count; index++) {
+                    if (strcmp(note->notebook->note_order[index], note->id) == 0) {
+                        note->order = (int)index;
+                        break;
+                    }
+                }
+            }
+            count++;
+            if (count % 5 == 0) {
+                if (g_idle_add) g_idle_add((void *)ui_metadata_updated, NULL);
+                usleep(5000);
+            }
         }
     }
-    if (loaded_any) {
-        resort_library_notes();
-        if (state.sidebar) rebuild_sidebar();
-        return true;
+    if (g_idle_add) g_idle_add((void *)ui_metadata_updated, NULL);
+    indexer_running = false;
+    return NULL;
+}
+
+static void start_background_metadata_indexer(void) {
+    if (indexer_running) return;
+    indexer_running = true;
+    pthread_t thread_id;
+    if (pthread_create(&thread_id, NULL, background_metadata_indexer, NULL) == 0) {
+        pthread_detach(thread_id);
+    } else {
+        indexer_running = false;
     }
-    return false;
 }
 
 static void extract_notebook_metadata(Notebook *notebook) {
@@ -1087,7 +1122,6 @@ static void load_library(void) {
         notebook->expanded = true;
         snprintf(notebook->title, sizeof notebook->title, "%s", book_entry->d_name);
         snprintf(notebook->path, sizeof notebook->path, "%s", book_path);
-        extract_notebook_metadata(notebook);
         notebook->next = state.notebooks; state.notebooks = notebook;
         DIR *book = opendir(book_path);
         if (!book) continue;
@@ -1427,10 +1461,11 @@ static void rebuild_tabs(void) {
             gtk_widget_add_css_class(tab, "tab");
             gtk_widget_add_css_class(tab, "active-tab");
             gtk_widget_add_css_class(tab, "tab-title");
-            gtk_widget_set_size_request(tab, 120, -1);
+            gtk_widget_set_size_request(tab, 100, -1);
             g_signal_connect_data(tab, "changed", (void *)active_tab_title_changed, note, NULL, 0);
         } else {
             tab = text_button(note_display_title(note), "tab");
+            gtk_widget_set_size_request(tab, 100, -1);
             g_signal_connect_data(tab, "clicked", (void *)select_note, note, NULL, 0);
         }
         gtk_box_append(state.tabbar, tab);
@@ -3191,7 +3226,7 @@ static void library_menu_clicked(Ptr button, Ptr user_data) {
 }
 
 static Ptr library_menu_button(Ptr target, bool notebook) {
-    Ptr button = icon_button("color-select-symbolic", notebook ? "Cor e ações do notebook" : "Cor e ações da nota");
+    Ptr button = icon_button("view-more-symbolic", notebook ? "Ações do notebook" : "Ações da nota");
     gtk_widget_add_css_class(button, "item-menu");
     ContextTarget *context = calloc(1, sizeof *context); context->widget = button; context->target = target; context->notebook = notebook;
     g_signal_connect_data(button, "clicked", (void *)library_menu_clicked, context, (void *)free_signal_data, 0);
@@ -4152,24 +4187,11 @@ static void activate(Ptr app, Ptr unused) {
 
     Ptr outer = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     state.sidebar_toggle = icon_button("sidebar-hide-symbolic", tr("Ocultar biblioteca"));
-    Ptr add_book = icon_button("folder-new-symbolic", tr("Novo notebook"));
-    Ptr add_note = icon_button("document-new-symbolic", tr("Nova nota"));
-    Ptr templates = icon_button("document-properties-symbolic", tr("Templates"));
-    Ptr open = icon_button("document-open-symbolic", tr("Abrir…"));
-    Ptr preferences = icon_button("preferences-system-symbolic", tr("Preferências"));
     Ptr history = icon_button("document-open-recent-symbolic", tr("Histórico"));
     Ptr export = icon_button("x-office-document-symbolic", "Exportar nota");
-    Ptr save = icon_button("document-save-symbolic", tr("Guardar"));
     g_signal_connect_data(state.sidebar_toggle, "clicked", (void *)toggle_sidebar, NULL, NULL, 0);
-    g_signal_connect_data(add_book, "clicked", (void *)new_notebook, NULL, NULL, 0);
-    g_signal_connect_data(add_note, "clicked", (void *)new_note, NULL, NULL, 0);
-    g_signal_connect_data(templates, "clicked", (void *)show_templates, NULL, NULL, 0);
-    g_signal_connect_data(open, "clicked", (void *)open_markdown, NULL, NULL, 0);
-    g_signal_connect_data(preferences, "clicked", (void *)show_preferences, NULL, NULL, 0);
     g_signal_connect_data(history, "clicked", (void *)show_history, NULL, NULL, 0);
     g_signal_connect_data(export, "clicked", (void *)show_export_menu, NULL, NULL, 0);
-    g_signal_connect_data(save, "clicked", (void *)save_active, NULL, NULL, 0);
-    gtk_widget_add_css_class(save, "suggested-action");
 
     Ptr paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL); gtk_paned_set_position(paned, 280);
     gtk_widget_set_vexpand(paned, true);
@@ -4205,29 +4227,22 @@ static void activate(Ptr app, Ptr unused) {
     state.tabbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2); gtk_widget_add_css_class(state.tabbar, "tabbar");
     gtk_box_append(workspace, state.tabbar);
     Ptr identity = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12); margins(identity, 16, 7);
-    Ptr title_actions = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4); gtk_widget_add_css_class(title_actions, "title-actions");
-    gtk_box_append(title_actions, state.sidebar_toggle);
-    gtk_box_append(title_actions, add_book); gtk_box_append(title_actions, add_note);
-    gtk_box_append(title_actions, templates); gtk_box_append(title_actions, open);
-    gtk_box_append(title_actions, preferences); gtk_box_append(title_actions, history);
-    gtk_box_append(title_actions, export); gtk_box_append(title_actions, save);
-    gtk_box_append(identity, title_actions);
     state.title = gtk_entry_new(); gtk_entry_set_placeholder_text(state.title, tr("Título da nota"));
     gtk_widget_add_css_class(state.title, "note-title"); gtk_widget_set_size_request(state.title, 320, -1);
     gtk_widget_set_visible(state.title, false);
     gtk_widget_set_hexpand(state.title, true);
     Ptr tag_area = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5); gtk_widget_add_css_class(tag_area, "note-tag-area");
     state.note_tags_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    Ptr tags_scroll = gtk_scrolled_window_new(); gtk_widget_set_size_request(tags_scroll, 210, -1);
+    Ptr tags_scroll = gtk_scrolled_window_new(); gtk_widget_set_size_request(tags_scroll, 180, -1);
     gtk_scrolled_window_set_policy(tags_scroll, GTK_POLICY_AUTOMATIC, GTK_POLICY_NEVER);
     gtk_scrolled_window_set_child(tags_scroll, state.note_tags_box); gtk_box_append(tag_area, tags_scroll);
     state.tag_input = gtk_entry_new(); gtk_entry_set_placeholder_text(state.tag_input, tr("Adicionar tag"));
-    gtk_widget_add_css_class(state.tag_input, "tag-input"); gtk_widget_set_size_request(state.tag_input, 108, -1);
+    gtk_widget_add_css_class(state.tag_input, "tag-input"); gtk_widget_set_size_request(state.tag_input, 90, -1);
     g_signal_connect_data(state.tag_input, "activate", (void *)add_note_tag, NULL, NULL, 0); gtk_box_append(tag_area, state.tag_input);
     Ptr add_tag = icon_button("list-add-symbolic", tr("Adicionar tag")); gtk_widget_add_css_class(add_tag, "tag-add");
     g_signal_connect_data(add_tag, "clicked", (void *)add_note_tag_clicked, NULL, NULL, 0); gtk_box_append(tag_area, add_tag);
     state.tags = gtk_entry_new(); gtk_widget_set_visible(state.tags, false); gtk_box_append(tag_area, state.tags);
-    gtk_box_append(identity, state.title); gtk_box_append(identity, tag_area); gtk_box_append(workspace, identity);
+    gtk_box_append(identity, state.title); gtk_box_append(workspace, identity);
     g_signal_connect_data(state.title, "changed", (void *)content_changed, NULL, NULL, 0);
     g_signal_connect_data(state.tags, "changed", (void *)content_changed, NULL, NULL, 0);
     state.linksbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5); margins(state.linksbar, 16, 3);
@@ -4235,6 +4250,7 @@ static void activate(Ptr app, Ptr unused) {
     gtk_widget_add_css_class(state.linksbar, "linksbar"); gtk_box_append(workspace, state.linksbar);
     Ptr formatbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3); margins(formatbar, 12, 4);
     gtk_widget_add_css_class(formatbar, "formatbar");
+    gtk_box_append(formatbar, state.sidebar_toggle);
     static const char *heading_levels[] = {"H", "H1", "H2", "H3", "H4", "H5", "H6", NULL};
     Ptr heading_selector = gtk_drop_down_new_from_strings(heading_levels); state.format_heading = heading_selector;
     gtk_drop_down_set_selected(heading_selector, 0);
@@ -4268,6 +4284,8 @@ static void activate(Ptr app, Ptr unused) {
     g_signal_connect_data(image, "clicked", (void *)insert_image, NULL, NULL, 0);
     gtk_box_append(formatbar, image);
     Ptr format_spacer = gtk_label_new(""); gtk_widget_set_hexpand(format_spacer, true); gtk_box_append(formatbar, format_spacer);
+    gtk_box_append(formatbar, history);
+    gtk_box_append(formatbar, export);
     Ptr modes = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2); gtk_widget_add_css_class(modes, "mode-switcher");
     state.mode_editor = icon_button("document-edit-symbolic", tr("Editar nota"));
     state.mode_visual = icon_button("view-grid-symbolic", tr("Editar visualmente"));
@@ -4354,11 +4372,15 @@ static void activate(Ptr app, Ptr unused) {
     gtk_box_append(workspace, stack);
     Ptr statusbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 9); gtk_widget_add_css_class(statusbar, "statusbar");
     state.status = gtk_label_new(tr("Selecione uma nota")); gtk_label_set_xalign(state.status, 0.0f);
-    gtk_widget_set_hexpand(state.status, true); gtk_widget_add_css_class(state.status, "status");
+    gtk_widget_add_css_class(state.status, "status");
     state.stats = gtk_label_new("0 palavras  •  0 carateres"); gtk_widget_add_css_class(state.stats, "document-stats");
     state.line_badge = gtk_label_new("1 linha"); gtk_widget_add_css_class(state.line_badge, "line-badge");
     Ptr markdown_badge = gtk_label_new("Markdown"); gtk_widget_add_css_class(markdown_badge, "markdown-badge");
-    gtk_box_append(statusbar, state.status); gtk_box_append(statusbar, state.stats);
+    gtk_box_append(statusbar, state.status);
+    gtk_box_append(statusbar, tag_area);
+    Ptr status_spacer = gtk_label_new(""); gtk_widget_set_hexpand(status_spacer, true);
+    gtk_box_append(statusbar, status_spacer);
+    gtk_box_append(statusbar, state.stats);
     gtk_box_append(statusbar, state.line_badge); gtk_box_append(statusbar, markdown_badge);
     gtk_box_append(workspace, statusbar); gtk_paned_set_end_child(paned, workspace);
     gtk_box_append(outer, paned); gtk_window_set_child(state.window, outer); gtk_window_present(state.window);
@@ -4504,9 +4526,14 @@ int main(int argc, char **argv) {
     if (ui_test) { state.ui_test = true; state.empty_ui_test = empty_ui_test; state.external_count = 0; if (!prepare_ui_test()) return 1; }
     load_library(); if (!ui_test) restore_recovery();
     if (ui_test) {
-        while (load_next_note_metadata(NULL));
+        for (Notebook *book = state.notebooks; book; book = book->next) extract_notebook_metadata(book);
+        for (Note *note = state.notes; note; note = note->next) {
+            extract_metadata(note);
+            note->metadata_loaded = true;
+        }
+        resort_library_notes();
     } else {
-        g_timeout_add(50, (void *)load_next_note_metadata, NULL);
+        start_background_metadata_indexer();
     }
     for (size_t index = 0; index < state.external_count; index++) add_external_note(state.external_paths[index]);
     int application_flags = G_APPLICATION_HANDLES_OPEN | (new_instance ? G_APPLICATION_NON_UNIQUE : 0);
