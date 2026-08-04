@@ -63,3 +63,12 @@ swift build -c release
 ## Licença
 
 [MIT License](LICENSE)
+
+## SCREENSHOTS
+
+### Linux Debian
+
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/6858e979-7f2a-4484-a617-9b38ade86a88" />
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/ab32281d-b5d5-4c65-8247-f8abe71efdd8" />
+
+
