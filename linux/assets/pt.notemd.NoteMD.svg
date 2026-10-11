@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <title>NoteMD</title>
+  <desc>A warm paper notebook with an amber binding and a blue writing pen. Transparent margins keep the icon aligned with other desktop applications.</desc>
+  <defs>
+    <linearGradient id="cover" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#f1bb5b"/>
+      <stop offset="1" stop-color="#d99a37"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#fffdf8"/>
+      <stop offset="1" stop-color="#f1ede5"/>
+    </linearGradient>
+    <linearGradient id="pen" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#799cc1"/>
+      <stop offset="1" stop-color="#486888"/>
+    </linearGradient>
+  </defs>
+  <!-- Visible face: 108 of 128 pixels, with a quiet two-pixel base. -->
+  <rect x="10" y="14" width="108" height="106" rx="22" fill="#172535" opacity=".10"/>
+  <rect x="10" y="10" width="108" height="108" rx="22" fill="#be812b"/>
+  <rect x="10" y="10" width="108" height="106" rx="22" fill="url(#cover)"/>
+  <path d="M10 40h108v54a22 22 0 0 1-22 22H32a22 22 0 0 1-22-22Z" fill="url(#paper)"/>
+  <path d="M12 39h104" stroke="#9a692d" stroke-opacity=".15" stroke-width="2"/>
+  <path d="M32 52v48" stroke="#c0ccd9" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M44 59h38M44 73h26M44 87h17" stroke="#d6d7d4" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="32" cy="25" r="3" fill="#a76c20" opacity=".55"/>
+  <circle cx="96" cy="25" r="3" fill="#a76c20" opacity=".55"/>
+  <g transform="rotate(35 88 75)">
+    <path d="M81 49a7 7 0 0 1 14 0v44H81Z" fill="#1c2c3d" opacity=".10" transform="translate(2 2)"/>
+    <path d="M81 49a7 7 0 0 1 14 0v44H81Z" fill="url(#pen)"/>
+    <path d="M81 93h14l-7 13Z" fill="#d9c1a0"/>
+    <path d="m85.3 101 2.7 5 2.7-5Z" fill="#37475a"/>
+    <path d="M84 49v36" stroke="#a7c0d9" stroke-width="2" stroke-linecap="round" opacity=".65"/>
+    <path d="M92 48v15" stroke="#dbe6f1" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+</svg>

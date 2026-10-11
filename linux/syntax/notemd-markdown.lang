@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- NoteMD extensions to the system Markdown language. -->
+<language id="notemd-markdown" name="NoteMD Markdown" version="2.0" _section="Markup">
+  <styles>
+    <style id="marker" name="marker" map-to="def:comment"/>
+    <style id="code" name="code" map-to="def:preformatted-section"/>
+    <style id="strike" name="strike" map-to="def:deletion"/>
+    <style id="wiki" name="wiki" map-to="def:link-text"/>
+    <style id="task" name="task" map-to="def:list-marker"/>
+    <style id="table-header" name="table-header" map-to="def:heading"/>
+    <style id="red" name="red" map-to="def:constant"/>
+    <style id="orange" name="orange" map-to="def:constant"/>
+    <style id="yellow" name="yellow" map-to="def:constant"/>
+    <style id="green" name="green" map-to="def:constant"/>
+    <style id="blue" name="blue" map-to="def:constant"/>
+    <style id="purple" name="purple" map-to="def:constant"/>
+  </styles>
+  <definitions>
+    <context id="fence-python3" style-ref="code" class="no-spell-check"><start>^[ ]{0,3}(`{3,}|~{3,})[ \t]*(?:python|python3|py)[ \t]*$</start><end>^[ ]{0,3}\%{1@start}[`~]*[ \t]*$</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="python3:python3"/></include></context>
+    <context id="fence-js" style-ref="code" class="no-spell-check"><start>^[ ]{0,3}(`{3,}|~{3,})[ \t]*(?:javascript|js|jsx)[ \t]*$</start><end>^[ ]{0,3}\%{1@start}[`~]*[ \t]*$</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="js:js"/></include></context>
+    <context id="fence-typescript" style-ref="code" class="no-spell-check"><start>^[ ]{0,3}(`{3,}|~{3,})[ \t]*(?:typescript|ts|tsx)[ \t]*$</start><end>^[ ]{0,3}\%{1@start}[`~]*[ \t]*$</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="typescript:typescript"/></include></context>
+    <context id="fence-c" style-ref="code" class="no-spell-check"><start>^[ ]{0,3}(`{3,}|~{3,})[ \t]*(?:c|h)[ \t]*$</start><end>^[ ]{0,3}\%{1@start}[`~]*[ \t]*$</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="c:c"/></include></context>
+    <context id="fence-cpp" style-ref="code" class="no-spell-check"><start>^[ ]{0,3}(`{3,}|~{3,})[ \t]*(?:cpp|c\+\+|cxx)[ \t]*$</start><end>^[ ]{0,3}\%{1@start}[`~]*[ \t]*$</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="cpp:cpp"/></include></context>
+    <context id="fence-sh" style-ref="code" class="no-spell-check"><start>^[ ]{0,3}(`{3,}|~{3,})[ \t]*(?:sh|bash|shell)[ \t]*$</start><end>^[ ]{0,3}\%{1@start}[`~]*[ \t]*$</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="sh:sh"/></include></context>
+    <context id="fence-json" style-ref="code" class="no-spell-check"><start>^[ ]{0,3}(`{3,}|~{3,})[ \t]*(?:json)[ \t]*$</start><end>^[ ]{0,3}\%{1@start}[`~]*[ \t]*$</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="json:json"/></include></context>
+    <context id="fence-css" style-ref="code" class="no-spell-check"><start>^[ ]{0,3}(`{3,}|~{3,})[ \t]*(?:css)[ \t]*$</start><end>^[ ]{0,3}\%{1@start}[`~]*[ \t]*$</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="css:css"/></include></context>
+    <context id="fence-html" style-ref="code" class="no-spell-check"><start>^[ ]{0,3}(`{3,}|~{3,})[ \t]*(?:html|xml)[ \t]*$</start><end>^[ ]{0,3}\%{1@start}[`~]*[ \t]*$</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="html:html"/></include></context>
+    <context id="fence-sql" style-ref="code" class="no-spell-check"><start>^[ ]{0,3}(`{3,}|~{3,})[ \t]*(?:sql)[ \t]*$</start><end>^[ ]{0,3}\%{1@start}[`~]*[ \t]*$</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="sql:sql"/></include></context>
+    <context id="fence-rust" style-ref="code" class="no-spell-check"><start>^[ ]{0,3}(`{3,}|~{3,})[ \t]*(?:rust|rs)[ \t]*$</start><end>^[ ]{0,3}\%{1@start}[`~]*[ \t]*$</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="rust:rust"/></include></context>
+    <context id="fence-go" style-ref="code" class="no-spell-check"><start>^[ ]{0,3}(`{3,}|~{3,})[ \t]*(?:go)[ \t]*$</start><end>^[ ]{0,3}\%{1@start}[`~]*[ \t]*$</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="go:go"/></include></context>
+    <context id="fence" style-ref="code" class="no-spell-check"><start>^[ ]{0,3}(`{3,}|~{3,}).*$</start><end>^[ ]{0,3}\%{1@start}[`~]*[ \t]*$</end></context>
+    <context id="task" style-ref="task"><match>^[ \t]*[-*+]\s+\[[ xX]\]</match></context>
+    <context id="wiki" style-ref="wiki"><match>\[\[[^\]\n]+\]\]</match></context>
+    <context id="strike" style-ref="strike"><start>~~(?=\S)</start><end>~~</end><include><context ref="markdown:markdown-syntax"/></include></context>
+    <context id="color-red" style-ref="red"><start>&lt;span style="color:#d1242f"&gt;</start><end>&lt;/span&gt;</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="markdown:markdown-syntax"/></include></context>
+    <context id="color-orange" style-ref="orange"><start>&lt;span style="color:#bc4c00"&gt;</start><end>&lt;/span&gt;</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="markdown:markdown-syntax"/></include></context>
+    <context id="color-yellow" style-ref="yellow"><start>&lt;span style="color:#9a6700"&gt;</start><end>&lt;/span&gt;</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="markdown:markdown-syntax"/></include></context>
+    <context id="color-green" style-ref="green"><start>&lt;span style="color:#1a7f37"&gt;</start><end>&lt;/span&gt;</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="markdown:markdown-syntax"/></include></context>
+    <context id="color-blue" style-ref="blue"><start>&lt;span style="color:#0969da"&gt;</start><end>&lt;/span&gt;</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="markdown:markdown-syntax"/></include></context>
+    <context id="color-purple" style-ref="purple"><start>&lt;span style="color:#8250df"&gt;</start><end>&lt;/span&gt;</end><include><context sub-pattern="0" where="start" style-ref="marker"/><context sub-pattern="0" where="end" style-ref="marker"/><context ref="markdown:markdown-syntax"/></include></context>
+    <context id="table-separator" style-ref="marker"><match>^[ \t]*\|?[ \t]*:?-{3,}:?[ \t]*(?:\|[ \t]*:?-{3,}:?[ \t]*)+\|?[ \t]*$</match></context>
+    <context id="table-pipe" style-ref="marker"><match>(?&lt;!\\)\|</match></context>
+    <context id="notemd-markdown"><include>
+      <context ref="fence-python3"/>
+      <context ref="fence-js"/>
+      <context ref="fence-typescript"/>
+      <context ref="fence-c"/>
+      <context ref="fence-cpp"/>
+      <context ref="fence-sh"/>
+      <context ref="fence-json"/>
+      <context ref="fence-css"/>
+      <context ref="fence-html"/>
+      <context ref="fence-sql"/>
+      <context ref="fence-rust"/>
+      <context ref="fence-go"/>
+      <context ref="fence"/>
+      <context ref="task"/>
+      <context ref="wiki"/>
+      <context ref="strike"/>
+      <context ref="color-red"/>
+      <context ref="color-orange"/>
+      <context ref="color-yellow"/>
+      <context ref="color-green"/>
+      <context ref="color-blue"/>
+      <context ref="color-purple"/>
+      <context ref="table-separator"/>
+      <context ref="table-pipe"/>
+      <context ref="markdown:markdown-syntax"/>
+      <context ref="html:html"/>
+    </include></context>
+  </definitions>
+</language>

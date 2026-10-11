@@ -1,7 +1,2 @@
-textview.markdown-source, textview.markdown-source text,
-textview.preview, textview.preview text,
-textview.block-source, textview.block-source text {
-  background: @theme_bg_color;
-  color: @theme_fg_color;
-  caret-color: @theme_selected_bg_color;
-}
+/* Follow the native GTK palette, including its light and dark variants.
+ * Surface and accent aliases are supplied by style.css. */

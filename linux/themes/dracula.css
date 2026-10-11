@@ -1,14 +1,17 @@
-@define-color theme_bg_color #282a36;
-@define-color theme_fg_color #f8f8f2;
+/* NoteMD dracula: distinct chrome, paper and navigation surfaces. */
+@define-color theme_bg_color #242632;
+@define-color theme_fg_color #f1eff7;
 @define-color theme_base_color #282a36;
-@define-color theme_text_color #f8f8f2;
-@define-color theme_selected_bg_color #bd93f9;
-@define-color theme_selected_fg_color #ffffff;
-
-textview.markdown-source, textview.markdown-source text,
-textview.preview, textview.preview text,
-textview.block-source, textview.block-source text {
-  background: #282a36;
-  color: #f8f8f2;
-  caret-color: #bd93f9;
-}
+@define-color theme_text_color #f1eff7;
+@define-color theme_selected_bg_color #b69af5;
+@define-color theme_selected_fg_color #241d35;
+@define-color notemd_chrome #242632;
+@define-color notemd_paper #282a36;
+@define-color notemd_sidebar mix(@notemd_chrome, @notemd_paper, .24);
+@define-color notemd_border #3b3f51;
+@define-color notemd_muted #b4b1c6;
+@define-color notemd_faint #9692ab;
+@define-color notemd_accent #b69af5;
+@define-color notemd_accent_fg #241d35;
+@define-color notemd_hover alpha(#f1eff7, .065);
+@define-color notemd_selection alpha(#b69af5, .15);

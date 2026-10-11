@@ -1,14 +1,17 @@
-@define-color theme_bg_color #090909;
-@define-color theme_fg_color #f2f2f2;
-@define-color theme_base_color #090909;
-@define-color theme_text_color #f2f2f2;
-@define-color theme_selected_bg_color #ffffff;
-@define-color theme_selected_fg_color #090909;
-
-textview.markdown-source, textview.markdown-source text,
-textview.preview, textview.preview text,
-textview.block-source, textview.block-source text {
-  background: #090909;
-  color: #f2f2f2;
-  caret-color: #ffffff;
-}
+/* NoteMD black: distinct chrome, paper and navigation surfaces. */
+@define-color theme_bg_color #191e27;
+@define-color theme_fg_color #dee5ef;
+@define-color theme_base_color #1e2530;
+@define-color theme_text_color #dee5ef;
+@define-color theme_selected_bg_color #8aabd2;
+@define-color theme_selected_fg_color #142031;
+@define-color notemd_chrome #191e27;
+@define-color notemd_paper #1e2530;
+@define-color notemd_sidebar mix(@notemd_chrome, @notemd_paper, .24);
+@define-color notemd_border #343e4e;
+@define-color notemd_muted #a8b6c9;
+@define-color notemd_faint #8d9eb6;
+@define-color notemd_accent #8aabd2;
+@define-color notemd_accent_fg #142031;
+@define-color notemd_hover alpha(#dee5ef, .065);
+@define-color notemd_selection alpha(#8aabd2, .15);

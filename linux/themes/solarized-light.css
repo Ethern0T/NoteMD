@@ -1,14 +1,23 @@
-@define-color theme_bg_color #fdf6e3;
-@define-color theme_fg_color #586e75;
+/* NoteMD solarized-light: distinct chrome, paper and navigation surfaces. */
+@define-color theme_bg_color #eee8d5;
+@define-color theme_fg_color #435d66;
 @define-color theme_base_color #fdf6e3;
-@define-color theme_text_color #586e75;
-@define-color theme_selected_bg_color #268bd2;
-@define-color theme_selected_fg_color #fdf6e3;
-
-textview.markdown-source, textview.markdown-source text,
-textview.preview, textview.preview text,
-textview.block-source, textview.block-source text {
-  background: #fdf6e3;
-  color: #586e75;
-  caret-color: #268bd2;
-}
+@define-color theme_text_color #435d66;
+@define-color theme_selected_bg_color #326c84;
+@define-color theme_selected_fg_color #ffffff;
+@define-color notemd_chrome #eee8d5;
+@define-color notemd_paper #fdf6e3;
+@define-color notemd_sidebar mix(@notemd_chrome, @notemd_paper, .24);
+@define-color notemd_border #d6cdb7;
+@define-color notemd_muted #53666a;
+@define-color notemd_faint #52656a;
+@define-color notemd_accent #326c84;
+@define-color notemd_accent_fg #ffffff;
+@define-color notemd_hover alpha(#435d66, .065);
+@define-color notemd_selection alpha(#326c84, .15);
+@define-color notemd_red mix(#d1242f, #000000, .25);
+@define-color notemd_orange mix(#bc4c00, #000000, .25);
+@define-color notemd_yellow mix(#9a6700, #000000, .25);
+@define-color notemd_green mix(#1a7f37, #000000, .25);
+@define-color notemd_blue mix(#0969da, #000000, .25);
+@define-color notemd_purple mix(#8250df, #000000, .25);
