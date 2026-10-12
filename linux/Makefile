@@ -33,6 +33,7 @@ install-user: build/notemd
 	install -Dm644 themes/tokyo-night.css $(HOME)/.local/share/notemd/themes/tokyo-night.css
 	install -Dm644 themes/dracula.css $(HOME)/.local/share/notemd/themes/dracula.css
 	install -Dm644 themes/solarized-light.css $(HOME)/.local/share/notemd/themes/solarized-light.css
+	install -Dm644 themes/catppuccin-latte.css $(HOME)/.local/share/notemd/themes/catppuccin-latte.css
 	install -Dm644 packaging/pt.notemd.NoteMD.metainfo.xml $(HOME)/.local/share/metainfo/pt.notemd.NoteMD.metainfo.xml
 	@if command -v gtk-update-icon-cache >/dev/null 2>&1; then gtk-update-icon-cache -f -t "$(HOME)/.local/share/icons/hicolor"; fi
 
@@ -68,4 +69,5 @@ deb: build/notemd
 	install -Dm644 themes/tokyo-night.css build/deb/usr/share/notemd/themes/tokyo-night.css
 	install -Dm644 themes/dracula.css build/deb/usr/share/notemd/themes/dracula.css
 	install -Dm644 themes/solarized-light.css build/deb/usr/share/notemd/themes/solarized-light.css
+	install -Dm644 themes/catppuccin-latte.css build/deb/usr/share/notemd/themes/catppuccin-latte.css
 	dpkg-deb --build --root-owner-group build/deb build/notemd_1.2.0_amd64.deb

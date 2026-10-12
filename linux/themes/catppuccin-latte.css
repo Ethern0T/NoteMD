@@ -1,0 +1,17 @@
+/* Catppuccin Latte, adapted for NoteMD. https://catppuccin.com/palette/ */
+@define-color theme_bg_color #e6e9ef;
+@define-color theme_fg_color #4c4f69;
+@define-color theme_base_color #eff1f5;
+@define-color theme_text_color #4c4f69;
+@define-color theme_selected_bg_color #8839ef;
+@define-color theme_selected_fg_color #ffffff;
+@define-color notemd_chrome #e6e9ef;
+@define-color notemd_paper #eff1f5;
+@define-color notemd_sidebar #dce0e8;
+@define-color notemd_border #ccd0da;
+@define-color notemd_muted #5c5f77;
+@define-color notemd_faint #6c6f85;
+@define-color notemd_accent #8839ef;
+@define-color notemd_accent_fg #ffffff;
+@define-color notemd_hover alpha(#4c4f69, .065);
+@define-color notemd_selection alpha(#8839ef, .15);

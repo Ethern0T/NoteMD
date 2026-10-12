@@ -15,9 +15,3 @@
 @define-color notemd_accent_fg #ffffff;
 @define-color notemd_hover alpha(#435d66, .065);
 @define-color notemd_selection alpha(#326c84, .15);
-@define-color notemd_red mix(#d1242f, #000000, .25);
-@define-color notemd_orange mix(#bc4c00, #000000, .25);
-@define-color notemd_yellow mix(#9a6700, #000000, .25);
-@define-color notemd_green mix(#1a7f37, #000000, .25);
-@define-color notemd_blue mix(#0969da, #000000, .25);
-@define-color notemd_purple mix(#8250df, #000000, .25);

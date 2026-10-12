@@ -22,7 +22,7 @@
 - **Ficheiros e armazenamento**: Leitura/edição de ficheiros `.md` locais e externos, deteção de alterações externas.
 - **Histórico e segurança**: Gravação automática, recuperação de rascunhos e histórico de versões.
 - **Exportação e utilitários**: Exportação para PDF, HTML e DOCX. Templates para reuniões, diários e projetos.
-- **Personalização**: Temas de cor (Sistema, Claro, Escuro, Monokai, Tokyo Night, Dracula, Solarized Light) e suporte multilíngue (Português, Inglês, Francês).
+- **Personalização**: Temas de cor (Sistema, Claro, Escuro, Monokai, Tokyo Night, Dracula, Solarized Light, Catppuccin Latte) e suporte multilíngue (Português, Inglês, Francês).
 
 ## Estrutura de Ficheiros
 

@@ -66,7 +66,7 @@ typedef struct Note {
     time_t external_mtime;
     char *draft;
     char draft_title[256], draft_tags[512];
-    Ptr button, menu_button, dirty_indicator, context_gesture;
+    Ptr button, menu_button, dirty_indicator, context_gesture, tab_title;
     struct Note *next;
 } Note;
 
@@ -82,8 +82,9 @@ typedef struct {
     Ptr find_window, find_entry, replace_entry, side_new_note, external_conflict_dialog, close_note_dialog;
     Ptr history_window, history_list, history_saved_buffer, history_current_buffer;
     Ptr workspace_stack, formatbar, metadata_button, export_button, header_title, header_tabs, tags_section;
-    Ptr library_split, document_split, links_scroll, format_tools, format_scroll, resize_grip, format_color_popover;
+    Ptr library_split, document_split, links_scroll, format_tools, format_scroll, resize_grip, format_color_popover, tab_click;
     Ptr format_colors[6];
+    Ptr heading_choices[7], format_heading_popover;
     Ptr block_box, block_buffers[256], block_checks[256], block_headings[256];
     bool block_is_heading[256], block_is_task[256];
     bool block_is_bullet[256], block_is_numbered[256], block_is_quote[256];
@@ -228,6 +229,12 @@ static const char *tr(const char *pt) {
          "Créez une version en modifiant puis en enregistrant la note."},
         {"Criar esta nota", "Create this note", "Créer cette note"},
         {"Linguagem", "Language", "Langage"},
+        {"Estilo do texto", "Text style", "Style du texte"},
+        {"Cor do notebook", "Notebook color", "Couleur du carnet"},
+        {"Ordenar notas", "Sort notes", "Trier les notes"},
+        {"Título 1", "Heading 1", "Titre 1"}, {"Título 2", "Heading 2", "Titre 2"},
+        {"Título 3", "Heading 3", "Titre 3"}, {"Título 4", "Heading 4", "Titre 4"},
+        {"Título 5", "Heading 5", "Titre 5"}, {"Título 6", "Heading 6", "Titre 6"},
         {"Descrição da imagem", "Image description", "Description de l’image"},
         {"Localização da imagem", "Image location", "Emplacement de l’image"}
     };
@@ -317,6 +324,9 @@ FN(void, gtk_widget_set_sensitive, (Ptr, gboolean));
 FN(void, gtk_widget_set_valign, (Ptr, int));
 FN(void, gtk_widget_set_halign, (Ptr, int));
 FN(gboolean, gtk_widget_grab_focus, (Ptr));
+FN(void, gtk_widget_set_can_focus, (Ptr, gboolean));
+FN(Ptr, gtk_widget_pick, (Ptr, double, double, int));
+FN(Ptr, gtk_event_controller_focus_new, (void));
 FN(gboolean, gtk_widget_get_visible, (Ptr));
 FN(void, gtk_widget_add_css_class, (Ptr, const char *));
 FN(void, gtk_widget_remove_css_class, (Ptr, const char *));
@@ -337,6 +347,7 @@ FN(void, gtk_widget_unparent, (Ptr));
 FN(Ptr, gtk_popover_new, (void));
 FN(void, gtk_popover_set_child, (Ptr, Ptr));
 FN(void, gtk_popover_set_pointing_to, (Ptr, const void *));
+FN(void, gtk_popover_set_has_arrow, (Ptr, gboolean));
 FN(void, gtk_popover_popup, (Ptr));
 FN(void, gtk_popover_popdown, (Ptr));
 FN(Ptr, gtk_drop_target_new, (GType, int));
@@ -357,10 +368,15 @@ FN(void, gtk_search_entry_set_placeholder_text, (Ptr, const char *));
 FN(void, gtk_entry_set_placeholder_text, (Ptr, const char *));
 FN(const char *, gtk_editable_get_text, (Ptr));
 FN(void, gtk_editable_set_text, (Ptr, const char *));
+FN(void, gtk_editable_set_editable, (Ptr, gboolean));
+FN(gboolean, gtk_editable_get_editable, (Ptr));
+FN(void, gtk_editable_select_region, (Ptr, int, int));
 FN(Ptr, gtk_button_new_with_label, (const char *));
 FN(Ptr, gtk_button_new_from_icon_name, (const char *));
 FN(Ptr, gtk_menu_button_new, (void));
 FN(void, gtk_menu_button_set_icon_name, (Ptr, const char *));
+FN(void, gtk_menu_button_set_label, (Ptr, const char *));
+FN(void, gtk_menu_button_set_always_show_arrow, (Ptr, gboolean));
 FN(void, gtk_menu_button_set_popover, (Ptr, Ptr));
 FN(void, gtk_button_set_child, (Ptr, Ptr));
 FN(Ptr, gtk_check_button_new_with_label, (const char *));
@@ -389,6 +405,14 @@ FN(int, gtk_text_buffer_get_char_count, (Ptr));
 FN(Ptr, gtk_text_buffer_get_insert, (Ptr));
 FN(void, gtk_text_buffer_get_iter_at_mark, (Ptr, void *, Ptr));
 FN(int, gtk_text_iter_get_line, (const void *));
+FN(int, gtk_text_iter_get_line_offset, (const void *));
+FN(void, gtk_text_iter_set_line_offset, (void *, int));
+FN(gboolean, gtk_text_iter_forward_to_line_end, (void *));
+FN(gboolean, gtk_text_iter_ends_line, (const void *));
+FN(gboolean, gtk_text_iter_backward_char, (void *));
+FN(void, gtk_text_buffer_begin_user_action, (Ptr));
+FN(void, gtk_text_buffer_end_user_action, (Ptr));
+FN(void, gtk_text_buffer_undo, (Ptr));
 FN(Ptr, gtk_text_buffer_create_tag, (Ptr, const char *, const char *, ...));
 FN(Ptr, gtk_text_buffer_get_tag_table, (Ptr));
 FN(Ptr, gtk_text_tag_table_lookup, (Ptr, const char *));
@@ -598,6 +622,7 @@ static Ptr note_drag_prepare(Ptr source, double x, double y, Ptr user_data);
 static gboolean note_dropped_on_notebook(Ptr target, const void *value, double x, double y, Ptr user_data);
 static gboolean note_dropped_on_note(Ptr target, const void *value, double x, double y, Ptr user_data);
 static void unique_path(char *output, size_t size, const char *parent, const char *base);
+static void sync_heading_choice(Ptr buffer);
 
 static void die(const char *message) {
     fprintf(stderr, "NoteMD: %s\n", message);
@@ -650,6 +675,11 @@ static void load_gtk(void) {
     LOAD(gtk_widget_set_size_request); LOAD(gtk_widget_set_visible); LOAD(gtk_widget_get_visible);
     LOAD(gtk_widget_set_sensitive); LOAD(gtk_widget_set_valign); LOAD(gtk_widget_set_halign);
     LOAD(gtk_widget_grab_focus);
+    LOAD(gtk_menu_button_set_label); LOAD(gtk_menu_button_set_always_show_arrow);
+    LOAD(gtk_text_iter_get_line_offset); LOAD(gtk_text_iter_set_line_offset); LOAD(gtk_text_iter_forward_to_line_end);
+    LOAD(gtk_text_iter_ends_line); LOAD(gtk_text_iter_backward_char); LOAD(gtk_text_buffer_begin_user_action); LOAD(gtk_text_buffer_end_user_action); LOAD(gtk_text_buffer_undo);
+    LOAD(gtk_widget_set_can_focus); LOAD(gtk_widget_pick); LOAD(gtk_event_controller_focus_new);
+    LOAD(gtk_editable_set_editable); LOAD(gtk_editable_get_editable); LOAD(gtk_editable_select_region);
     LOAD(gtk_widget_add_css_class); LOAD(gtk_widget_remove_css_class); LOAD(gtk_widget_has_css_class);
     LOAD(gtk_widget_set_tooltip_text);
     LOAD(gtk_widget_set_cursor_from_name); LOAD(gtk_event_controller_get_current_event); LOAD(gtk_gesture_set_state);
@@ -657,7 +687,7 @@ static void load_gtk(void) {
     LOAD(gtk_widget_add_controller); LOAD(gtk_event_controller_key_new); LOAD(gtk_event_controller_set_propagation_phase);
     LOAD(gtk_gesture_click_new); LOAD(gtk_gesture_single_set_button);
     LOAD(gtk_widget_set_parent); LOAD(gtk_widget_unparent);
-    LOAD(gtk_popover_new); LOAD(gtk_popover_set_child); LOAD(gtk_popover_set_pointing_to); LOAD(gtk_popover_popup); LOAD(gtk_popover_popdown);
+    LOAD(gtk_popover_set_has_arrow); LOAD(gtk_popover_new); LOAD(gtk_popover_set_child); LOAD(gtk_popover_set_pointing_to); LOAD(gtk_popover_popup); LOAD(gtk_popover_popdown);
     LOAD(gtk_drop_target_new); LOAD(gtk_drag_source_new); LOAD(gtk_drag_source_set_actions);
     LOAD(gdk_file_list_get_type); LOAD(g_value_get_boxed); LOAD(g_value_get_string); LOAD(g_type_from_name);
     LOAD(gdk_content_provider_new_typed);
@@ -861,6 +891,9 @@ static void apply_preview_theme(Ptr extra_buffer) {
         if (!strcmp(state.theme, "solarized-light")) {
             heading = "#256b87"; code = "#78509b"; emphasis = "#9d4c27";
             code_background = "#eae4d1"; link = "#187272"; list = "#577423"; quote = "#53666a";
+        } else if (!strcmp(state.theme, "catppuccin-latte")) {
+            heading = "#8839ef"; code = "#d20f39"; emphasis = "#9b4b0a";
+            code_background = "#e6e9ef"; link = "#1e66f5"; list = "#287d1e"; quote = "#5c5f77";
         }
     } else if (!strcmp(state.theme, "dracula")) {
         heading = "#bd93f9"; code = "#ff94cc"; emphasis = "#ffc688"; code_background = "#36384c";
@@ -944,9 +977,25 @@ static void apply_theme(const char *theme) {
         ".notemd-window .block-card textview.block-code, .notemd-window .block-card textview.block-code text { font-size: %dpx; }\n"
         ".notemd-window .block-card textview.block-heading, .notemd-window .block-card textview.block-heading text { font-size: %dpx; }\n",
         font, font + 1, font, font + 4);
-    size_t combined_len = theme_len + style_len + strlen(typography) + 16;
+    /* Saturated library colors, with separate values for readable light/dark text. */
+    const char *library_colors = source_is_light() ?
+        "@define-color notemd_red #d50032;\n@define-color notemd_orange #b83b00;\n"
+        "@define-color notemd_yellow #8f6200;\n@define-color notemd_green #00772b;\n"
+        "@define-color notemd_blue #0057e6;\n@define-color notemd_purple #791fe8;\n" :
+        "@define-color notemd_red #ff3159;\n@define-color notemd_orange #ff8717;\n"
+        "@define-color notemd_yellow #ffcc00;\n@define-color notemd_green #0ede67;\n"
+        "@define-color notemd_blue #3994ff;\n@define-color notemd_purple #b065ff;\n";
+    /* Context menus deliberately use neutral surfaces, independent of desktop accents. */
+    const char *menu_colors = source_is_light() ?
+        "@define-color notemd_menu_surface #ffffff;\n@define-color notemd_menu_fg #303030;\n"
+        "@define-color notemd_menu_border #dddddd;\n@define-color notemd_menu_hover #f0f0f0;\n"
+        "@define-color notemd_menu_muted #666666;\n" :
+        "@define-color notemd_menu_surface #252525;\n@define-color notemd_menu_fg #f0f0f0;\n"
+        "@define-color notemd_menu_border #454545;\n@define-color notemd_menu_hover #353535;\n"
+        "@define-color notemd_menu_muted #b6b6b6;\n";
+    size_t combined_len = theme_len + style_len + strlen(library_colors) + strlen(menu_colors) + strlen(typography) + 16;
     char *combined = malloc(combined_len);
-    snprintf(combined, combined_len, "%s\n%s\n%s", style_css ? style_css : "", theme_css ? theme_css : "", typography);
+    snprintf(combined, combined_len, "%s\n%s\n%s\n%s\n%s", style_css ? style_css : "", theme_css ? theme_css : "", library_colors, menu_colors, typography);
 
     Ptr display = gdk_display_get_default();
     if (display) {
@@ -1724,7 +1773,7 @@ static void close_tab(Ptr button, Ptr user_data) {
 
 static void active_tab_title_changed(Ptr entry, Ptr user_data) {
     Note *note = user_data;
-    if (!note || note != state.active || state.loading) return;
+    if (!note || note != state.active || state.loading || !gtk_editable_get_editable(entry)) return;
     const char *text = gtk_editable_get_text(entry);
     state.loading = true;
     gtk_editable_set_text(state.title, text);
@@ -1736,6 +1785,48 @@ static void active_tab_title_changed(Ptr entry, Ptr user_data) {
     if (note->dirty_indicator) gtk_widget_set_visible(note->dirty_indicator, true);
     rebuild_sidebar();
     gtk_label_set_text(state.status, state.autosave ? tr("a guardar…") : tr("alterações por guardar"));
+}
+
+static void finish_tab_title_edit(Ptr entry) {
+    if (!gtk_editable_get_editable(entry)) return;
+    gtk_editable_set_editable(entry, false);
+    gtk_editable_select_region(entry, 0, 0);
+    gtk_widget_set_can_focus(entry, false);
+    gtk_widget_set_cursor_from_name(entry, "default");
+    gtk_widget_remove_css_class(entry, "editing-title");
+}
+
+static void tab_title_activated(Ptr entry, Ptr unused) {
+    (void)unused;
+    finish_tab_title_edit(entry);
+    const char *mode = gtk_stack_get_visible_child_name(state.mode_stack);
+    if (mode && !strcmp(mode, "split")) gtk_widget_grab_focus(state.split_source_view);
+    else if (mode && !strcmp(mode, "editor")) gtk_widget_grab_focus(state.editor);
+}
+
+static void tab_title_focus_left(Ptr controller, Ptr entry) {
+    (void)controller;
+    finish_tab_title_edit(entry);
+}
+
+static void tab_title_pressed(Ptr gesture, int presses, double x, double y, Ptr unused) {
+    (void)unused;
+    if (presses != 2) return;
+    Ptr picked = gtk_widget_pick(state.tabbar, x, y, 0);
+    for (Ptr widget = picked; widget && widget != state.tabbar; widget = gtk_widget_get_parent(widget)) {
+        for (Note *note = state.notes; note; note = note->next) if (note->tab_title == widget) {
+            select_note(NULL, note);
+            Ptr entry = note->tab_title;
+            gtk_editable_set_editable(entry, true);
+            gtk_widget_set_can_focus(entry, true);
+            gtk_widget_set_cursor_from_name(entry, "text");
+            gtk_widget_add_css_class(entry, "editing-title");
+            gtk_widget_grab_focus(entry);
+            gtk_editable_select_region(entry, 0, -1);
+            gtk_gesture_set_state(gesture, GTK_EVENT_SEQUENCE_CLAIMED);
+            return;
+        }
+    }
 }
 
 static void sync_workspace(void) {
@@ -1756,7 +1847,7 @@ static void rebuild_tabs(void) {
     if (!state.tabbar) return;
     while (gtk_widget_get_first_child(state.tabbar))
         gtk_box_remove(state.tabbar, gtk_widget_get_first_child(state.tabbar));
-    for (Note *note = state.notes; note; note = note->next) note->dirty_indicator = NULL;
+    for (Note *note = state.notes; note; note = note->next) { note->dirty_indicator = NULL; note->tab_title = NULL; }
     for (Note *note = state.notes; note; note = note->next) if (note->opened) {
         Ptr tab;
         if (note == state.active) {
@@ -1766,7 +1857,14 @@ static void rebuild_tabs(void) {
             gtk_widget_add_css_class(tab, "tab");
             gtk_widget_add_css_class(tab, "active-tab");
             gtk_widget_add_css_class(tab, "tab-title");
+            gtk_editable_set_editable(tab, false);
+            gtk_widget_set_can_focus(tab, false);
+            gtk_widget_set_cursor_from_name(tab, "default");
             g_signal_connect_data(tab, "changed", (void *)active_tab_title_changed, note, NULL, 0);
+            g_signal_connect_data(tab, "activate", (void *)tab_title_activated, NULL, NULL, 0);
+            Ptr focus = gtk_event_controller_focus_new();
+            g_signal_connect_data(focus, "leave", (void *)tab_title_focus_left, tab, NULL, 0);
+            gtk_widget_add_controller(tab, focus);
         } else {
             tab = gtk_button_new_with_label("");
             Ptr label = gtk_label_new(note_display_title(note));
@@ -1777,6 +1875,7 @@ static void rebuild_tabs(void) {
             gtk_widget_add_css_class(tab, "tab");
             g_signal_connect_data(tab, "clicked", (void *)select_note, note, NULL, 0);
         }
+        note->tab_title = tab;
         gtk_widget_set_tooltip_text(tab, note_display_title(note));
         Ptr group = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
         gtk_widget_add_css_class(group, "document-tab");
@@ -3186,11 +3285,11 @@ static void show_preferences(Ptr button, Ptr unused) {
     gtk_box_append(box, gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
     Ptr themes_label = gtk_label_new(tr("Tema do editor")); gtk_label_set_xalign(themes_label, 0.0f);
     gtk_widget_add_css_class(themes_label, "settings-label"); gtk_box_append(box, themes_label);
-    static const char *theme_ids[] = {"white", "black", "system", "monokai", "tokyo-night", "dracula", "solarized-light"};
-    const char *theme_labels[] = {tr("Claro"), tr("Escuro"), tr("Sistema"), "Monokai", "Tokyo Night", "Dracula", "Solarized Light"};
+    static const char *theme_ids[] = {"white", "black", "system", "monokai", "tokyo-night", "dracula", "solarized-light", "catppuccin-latte"};
+    const char *theme_labels[] = {tr("Claro"), tr("Escuro"), tr("Sistema"), "Monokai", "Tokyo Night", "Dracula", "Solarized Light", "Catppuccin Latte"};
     Ptr theme_rows = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5); Ptr row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
     for (size_t index = 0; index < sizeof theme_ids / sizeof theme_ids[0]; index++) {
-        if (index == 4) { gtk_box_append(theme_rows, row); row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5); }
+        if (index && index % 3 == 0) { gtk_box_append(theme_rows, row); row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5); }
         Ptr choice = gtk_button_new_with_label("");
         Ptr tile = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
         Ptr sample = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0); gtk_widget_set_halign(sample, GTK_ALIGN_CENTER);
@@ -3369,38 +3468,53 @@ static Ptr color_actions(bool notebook) {
     static const char *names[] = {"Sem cor", "Vermelho", "Laranja", "Amarelo", "Verde", "Azul", "Roxo"};
     static const char *values[] = {"", "#d1242f", "#bc4c00", "#9a6700", "#1a7f37", "#0969da", "#8250df"};
     static const char *classes[] = {"color-none", "color-red", "color-orange", "color-yellow", "color-green", "color-blue", "color-purple"};
-    Ptr row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3); gtk_widget_add_css_class(row, "color-palette");
+    Ptr row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6); gtk_widget_add_css_class(row, "color-palette");
+    const char *current = notebook ? state.active_notebook->color : state.active->color;
     for (size_t index = 0; index < sizeof values / sizeof values[0]; index++) {
-        Ptr choice = icon_button(index ? "media-record-symbolic" : "edit-clear-symbolic", names[index]);
+        bool selected = !strcasecmp(current, values[index]);
+        Ptr choice = icon_button(index ? (selected ? "object-select-symbolic" : "media-record-symbolic") : "edit-clear-symbolic", tr(names[index]));
         gtk_widget_add_css_class(choice, "color-swatch"); gtk_widget_add_css_class(choice, classes[index]);
+        if (selected) gtk_widget_add_css_class(choice, "chosen-color");
         g_signal_connect_data(choice, "clicked", (void *)(notebook ? notebook_color_changed : note_color_changed),
             (Ptr)values[index], NULL, 0); gtk_box_append(row, choice);
     }
     return row;
 }
 
-static void library_menu_clicked(Ptr button, Ptr user_data) {
-    (void)button; ContextTarget *context = user_data;
+static void library_menu_present(ContextTarget *context, const void *point) {
     if (!context || !context->target) return;
     Ptr anchor = context->widget;
     Ptr popover = gtk_popover_new(); Ptr box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
     gtk_widget_add_css_class(popover, "library-menu");
-    gtk_widget_add_css_class(box, "context-menu");
+    gtk_popover_set_has_arrow(popover, false);
+    if (point) gtk_popover_set_pointing_to(popover, point);
+    gtk_widget_add_css_class(box, "notemd-context-menu");
     if (context->notebook) {
         Notebook *book = context->target; state.active_notebook = book;
+        Ptr header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+        gtk_widget_add_css_class(header, "context-header"); add_library_color_class(header, book->color);
+        Ptr icon = gtk_image_new_from_icon_name(book->external ? "folder-remote-symbolic" : "folder-symbolic");
         Ptr heading = gtk_label_new(book->title); gtk_label_set_xalign(heading, 0.0f);
-        add_library_color_class(heading, book->color);
-        gtk_widget_add_css_class(heading, "context-title"); gtk_box_append(box, heading);
+        gtk_label_set_ellipsize(heading, 3); gtk_label_set_max_width_chars(heading, 28);
+        gtk_widget_set_tooltip_text(heading, book->title); add_library_color_class(heading, book->color);
+        gtk_widget_add_css_class(heading, "context-title");
+        gtk_box_append(header, icon); gtk_box_append(header, heading); gtk_box_append(box, header);
+        gtk_box_append(box, gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
         if (!book->external) {
             gtk_box_append(box, context_action("document-new-symbolic", "Nova nota", (void *)create_note_in_notebook, book));
             gtk_box_append(box, context_action("document-properties-symbolic", "Criar a partir de template", (void *)show_templates, NULL));
             gtk_box_append(box, context_action("edit-rename-symbolic", "Renomear notebook", (void *)rename_selected_notebook, NULL));
-            Ptr color_label = gtk_label_new("Cor do notebook"); gtk_label_set_xalign(color_label, 0.0f);
+            gtk_box_append(box, gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
+            Ptr color_label = gtk_label_new(tr("Cor do notebook")); gtk_label_set_xalign(color_label, 0.0f);
             gtk_widget_add_css_class(color_label, "context-section"); gtk_box_append(box, color_label);
             gtk_box_append(box, color_actions(true));
+            gtk_box_append(box, gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
+            Ptr sort_label = gtk_label_new(tr("Ordenar notas")); gtk_label_set_xalign(sort_label, 0.0f);
+            gtk_widget_add_css_class(sort_label, "context-section"); gtk_box_append(box, sort_label);
             gtk_box_append(box, context_action("view-sort-ascending-symbolic", "Ordenar por título", (void *)sort_title, NULL));
             gtk_box_append(box, context_action("document-open-recent-symbolic", "Mais recentes", (void *)sort_recent, NULL));
         }
+        gtk_box_append(box, gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
         Ptr remove = context_action("user-trash-symbolic", book->external ? "Fechar ficheiros externos" : "Remover notebook",
             (void *)delete_selected_notebook, NULL); gtk_widget_add_css_class(remove, "destructive-action"); gtk_box_append(box, remove);
     } else {
@@ -3423,7 +3537,11 @@ static void library_menu_clicked(Ptr button, Ptr user_data) {
         Ptr remove = context_action("user-trash-symbolic", note->external ? "Fechar ficheiro" : "Remover nota",
             (void *)delete_active_note, NULL); gtk_widget_add_css_class(remove, "destructive-action"); gtk_box_append(box, remove);
     }
-    margins(box, 10, 10); gtk_popover_set_child(popover, box); present_popover(popover, anchor);
+    margins(box, 6, 6); gtk_popover_set_child(popover, box); present_popover(popover, anchor);
+}
+
+static void library_menu_clicked(Ptr button, Ptr user_data) {
+    (void)button; library_menu_present(user_data, NULL);
 }
 
 static Ptr library_menu_button(Ptr target, bool notebook) {
@@ -3435,7 +3553,9 @@ static Ptr library_menu_button(Ptr target, bool notebook) {
 }
 
 static void library_context_pressed(Ptr gesture, int presses, double x, double y, Ptr user_data) {
-    (void)gesture; (void)presses; (void)x; (void)y; library_menu_clicked(NULL, user_data);
+    (void)gesture; (void)presses;
+    struct { int x, y, width, height; } point = {(int)x, (int)y, 1, 1};
+    library_menu_present(user_data, &point);
 }
 
 static Ptr attach_library_context_menu(Ptr widget, Ptr target, bool notebook) {
@@ -3449,7 +3569,7 @@ static Ptr attach_library_context_menu(Ptr widget, Ptr target, bool notebook) {
 
 static void show_export_menu(Ptr button, Ptr unused) {
     (void)unused; Ptr popover = gtk_popover_new(); Ptr box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
-    gtk_widget_add_css_class(box, "context-menu");
+    gtk_widget_add_css_class(box, "notemd-context-menu");
     Ptr heading = gtk_label_new("Exportar nota"); gtk_label_set_xalign(heading, 0.0f);
     gtk_widget_add_css_class(heading, "context-title"); gtk_box_append(box, heading);
     gtk_box_append(box, context_action("text-html-symbolic", "HTML", (void *)export_html, NULL));
@@ -3627,6 +3747,7 @@ static void apply_active_line_tag(void) {
 static void cursor_mark_set(Ptr buffer, const void *location, Ptr mark, Ptr unused) {
     (void)unused; if (!state.line_buffer || mark != gtk_text_buffer_get_insert(buffer)) return;
     state.active_line = gtk_text_iter_get_line(location) + 1; apply_active_line_tag();
+    sync_heading_choice(buffer);
 }
 
 static void update_statistics(const char *text) {
@@ -3668,6 +3789,7 @@ static void content_changed(Ptr object, Ptr unused) {
     update_views(text);
     if (!state.block_syncing && object == state.editor_buffer) rebuild_block_editor();
     update_statistics(text);
+    sync_heading_choice(state.split_origin ? state.split_buffer : state.editor_buffer);
     gtk_label_set_text(state.status, state.autosave ? tr("a guardar…") : tr("alterações por guardar")); g_free(text);
 }
 
@@ -3703,31 +3825,139 @@ static void select_note(Ptr button, Ptr user_data) {
     else if (mode && strcmp(mode, "split") == 0) gtk_widget_grab_focus(state.split_source_view);
 }
 
+static Ptr formatting_buffer(void) {
+    const char *mode = state.mode_stack ? gtk_stack_get_visible_child_name(state.mode_stack) : NULL;
+    return mode && !strcmp(mode, "split") && state.split_buffer ? state.split_buffer : state.editor_buffer;
+}
+
+static void focus_formatting_editor(void) {
+    const char *mode = gtk_stack_get_visible_child_name(state.mode_stack);
+    if (mode && !strcmp(mode, "split")) gtk_widget_grab_focus(state.split_source_view);
+    else if (mode && !strcmp(mode, "editor")) gtk_widget_grab_focus(state.editor);
+}
+
 static void insert_markdown(Ptr button, Ptr user_data) {
     (void)button;
-    if (!state.active) return;
+    if (!state.active || !user_data) return;
+    Ptr buffer = formatting_buffer();
     const char *format = user_data, *separator = strchr(format, '|');
     size_t prefix_length = separator ? (size_t)(separator - format) : strlen(format);
     const char *suffix = separator ? separator + 1 : "";
     TextIter start, end;
-    if (gtk_text_buffer_get_selection_bounds(state.editor_buffer, &start, &end)) {
-        char *selected = gtk_text_buffer_get_text(state.editor_buffer, &start, &end, true);
-        size_t size = prefix_length + strlen(selected) + strlen(suffix) + 1; char *replacement = calloc(size, 1);
-        memcpy(replacement, format, prefix_length); strcat(replacement, selected); strcat(replacement, suffix);
-        gtk_text_buffer_delete(state.editor_buffer, &start, &end); gtk_text_buffer_insert(state.editor_buffer, &start, replacement, -1);
-        free(replacement); g_free(selected);
-    } else {
-        size_t size = prefix_length + strlen(suffix) + 1; char *insertion = calloc(size, 1);
-        memcpy(insertion, format, prefix_length); strcat(insertion, suffix);
-        gtk_text_buffer_insert_at_cursor(state.editor_buffer, insertion, -1); free(insertion);
+    bool selected = gtk_text_buffer_get_selection_bounds(buffer, &start, &end);
+    if (!selected) {
+        gtk_text_buffer_get_iter_at_mark(buffer, &start, gtk_text_buffer_get_insert(buffer)); end = start;
+    }
+    int offset = gtk_text_iter_get_offset(&start), end_offset = gtk_text_iter_get_offset(&end);
+    char *text = gtk_text_buffer_get_text(buffer, &start, &end, true);
+    bool unwrap = false;
+    /* Repeating an inline action removes its delimiters while keeping the text selected. */
+    if (prefix_length && strlen(suffix) == prefix_length && !strncmp(format, suffix, prefix_length) &&
+        offset >= (int)prefix_length && end_offset + (int)prefix_length <= gtk_text_buffer_get_char_count(buffer)) {
+        TextIter before, after;
+        gtk_text_buffer_get_iter_at_offset(buffer, &before, offset - (int)prefix_length);
+        gtk_text_buffer_get_iter_at_offset(buffer, &after, end_offset + (int)prefix_length);
+        char *surrounding = gtk_text_buffer_get_text(buffer, &before, &after, true);
+        size_t length = strlen(surrounding);
+        unwrap = !strncmp(surrounding, format, prefix_length) && !strcmp(surrounding + length - prefix_length, suffix);
+        if (unwrap) { start = before; end = after; offset -= (int)prefix_length; }
+        g_free(surrounding);
+    }
+    size_t size = prefix_length + strlen(text) + strlen(suffix) + 1;
+    char *replacement = calloc(size, 1);
+    if (unwrap) strcpy(replacement, text);
+    else { memcpy(replacement, format, prefix_length); strcat(replacement, text); strcat(replacement, suffix); }
+    int inner_offset = offset + (unwrap ? 0 : (int)prefix_length);
+    int inner_length = utf8_offset(text, text + strlen(text));
+    gtk_text_buffer_begin_user_action(buffer);
+    gtk_text_buffer_delete(buffer, &start, &end);
+    gtk_text_buffer_insert(buffer, &start, replacement, -1);
+    gtk_text_buffer_end_user_action(buffer);
+    gtk_text_buffer_get_iter_at_offset(buffer, &start, inner_offset);
+    gtk_text_buffer_get_iter_at_offset(buffer, &end, inner_offset + inner_length);
+    gtk_text_buffer_select_range(buffer, &end, &start);
+    free(replacement); g_free(text);
+    focus_formatting_editor();
+}
+
+static const char *heading_label(unsigned level) {
+    static const char *labels[] = {"Parágrafo", "Título 1", "Título 2", "Título 3", "Título 4", "Título 5", "Título 6"};
+    return tr(labels[level <= 6 ? level : 0]);
+}
+
+static const char *heading_content(const char *line, size_t *indent, unsigned *level) {
+    *indent = 0; *level = 0;
+    while (line[*indent] == ' ' && *indent < 4) (*indent)++;
+    if (*indent == 4) { *indent = 0; return line; }
+    const char *start = line + *indent, *p = start;
+    while (*p == '#') p++;
+    size_t hashes = (size_t)(p - start);
+    if (hashes && hashes <= 6 && (!*p || *p == ' ' || *p == '\t')) {
+        *level = (unsigned)hashes;
+        while (*p == ' ' || *p == '\t') p++;
+        return p;
+    }
+    return start;
+}
+
+static void sync_heading_choice(Ptr buffer) {
+    if (!state.format_heading || !buffer || state.loading || state.view_syncing) return;
+    TextIter start, end;
+    gtk_text_buffer_get_iter_at_mark(buffer, &start, gtk_text_buffer_get_insert(buffer));
+    gtk_text_iter_set_line_offset(&start, 0); end = start; if (!gtk_text_iter_ends_line(&end)) gtk_text_iter_forward_to_line_end(&end);
+    char *line = gtk_text_buffer_get_text(buffer, &start, &end, true);
+    size_t indent; unsigned level; heading_content(line, &indent, &level); g_free(line);
+    gtk_menu_button_set_label(state.format_heading, heading_label(level));
+    for (unsigned i = 0; i <= 6; i++) if (state.heading_choices[i]) {
+        if (i == level) gtk_widget_add_css_class(state.heading_choices[i], "current-heading");
+        else gtk_widget_remove_css_class(state.heading_choices[i], "current-heading");
     }
 }
 
-static void heading_format_changed(Ptr dropdown, Ptr unused, Ptr user_data) {
-    (void)unused; (void)user_data; if (!state.active || state.loading) return;
-    guint level = gtk_drop_down_get_selected(dropdown); if (level == 0 || level > 6) return; char format[16];
-    memset(format, '#', level); format[level] = ' '; format[level + 1] = '|'; format[level + 2] = '\0';
-    insert_markdown(NULL, format); state.loading = true; gtk_drop_down_set_selected(dropdown, 0); state.loading = false;
+static void heading_format_clicked(Ptr button, Ptr user_data) {
+    (void)button;
+    unsigned level = (unsigned)(size_t)user_data;
+    if (!state.active || state.loading || level > 6) return;
+    gtk_popover_popdown(state.format_heading_popover);
+    Ptr buffer = formatting_buffer();
+    TextIter start, end;
+    bool selected = gtk_text_buffer_get_selection_bounds(buffer, &start, &end);
+    if (!selected) { gtk_text_buffer_get_iter_at_mark(buffer, &start, gtk_text_buffer_get_insert(buffer)); end = start; }
+    int cursor = gtk_text_iter_get_offset(&start);
+    if (selected && gtk_text_iter_get_line_offset(&end) == 0) gtk_text_iter_backward_char(&end);
+    gtk_text_iter_set_line_offset(&start, 0);
+    if (!gtk_text_iter_ends_line(&end)) gtk_text_iter_forward_to_line_end(&end);
+    int offset = gtk_text_iter_get_offset(&start);
+    char *text = gtk_text_buffer_get_text(buffer, &start, &end, true);
+    size_t lines = 1; for (const char *p = text; *p; p++) if (*p == '\n') lines++;
+    char *replacement = calloc(strlen(text) + lines * 7 + 1, 1), *out = replacement;
+    int cursor_delta = 0;
+    for (char *line = text; line;) {
+        char *next = strchr(line, '\n'); if (next) *next++ = '\0';
+        size_t indent; unsigned old_level; const char *content = heading_content(line, &indent, &old_level);
+        if (line == text) cursor_delta = (level ? (int)level + 1 : 0) - (int)(content - line - indent);
+        memcpy(out, line, indent); out += indent;
+        if (level) { memset(out, '#', level); out += level; *out++ = ' '; }
+        size_t length = strlen(content); memcpy(out, content, length); out += length;
+        if (next) *out++ = '\n';
+        line = next;
+    }
+    gtk_text_buffer_begin_user_action(buffer);
+    gtk_text_buffer_delete(buffer, &start, &end); gtk_text_buffer_insert(buffer, &start, replacement, -1);
+    int new_end = gtk_text_iter_get_offset(&start);
+    gtk_text_buffer_end_user_action(buffer);
+    if (selected) {
+        gtk_text_buffer_get_iter_at_offset(buffer, &end, new_end);
+        gtk_text_buffer_get_iter_at_offset(buffer, &start, offset);
+    } else {
+        int position = cursor + cursor_delta;
+        if (position < offset) position = offset;
+        if (position > new_end) position = new_end;
+        gtk_text_buffer_get_iter_at_offset(buffer, &start, position); end = start;
+    }
+    gtk_text_buffer_select_range(buffer, &end, &start);
+    free(replacement); g_free(text);
+    sync_heading_choice(buffer); focus_formatting_editor();
 }
 
 static void insert_text_color(Ptr button, Ptr user_data) {
@@ -3738,7 +3968,7 @@ static void insert_text_color(Ptr button, Ptr user_data) {
 }
 
 static void insert_literal(Ptr button, Ptr user_data) {
-    (void)button; if (state.active) gtk_text_buffer_insert_at_cursor(state.editor_buffer, (const char *)user_data, -1);
+    (void)button; if (state.active) { gtk_text_buffer_insert_at_cursor(formatting_buffer(), (const char *)user_data, -1); focus_formatting_editor(); }
 }
 
 static Ptr editor_scroller(Ptr view) {
@@ -3985,6 +4215,27 @@ static gboolean run_ui_assertions(Ptr unused) {
     bool header_tabs_ok = tab_ancestor && state.header_tabs && gtk_widget_get_visible(state.header_tabs) &&
         !gtk_widget_get_visible(state.header_title) && !tabs_natural_width && tabs_min_width == 0;
     printf("UI tabs-na-barra-titulo-sem-largura-imposta: %s\n", header_tabs_ok ? "OK" : "FALHOU"); ok = ok && header_tabs_ok;
+    Ptr initial_tab = state.active ? state.active->tab_title : NULL;
+    bool rename_ok = initial_tab && !gtk_editable_get_editable(initial_tab);
+    g_signal_emit_by_name(state.tab_click, "pressed", 1, 12.0, 12.0);
+    rename_ok = rename_ok && !gtk_editable_get_editable(initial_tab);
+    g_signal_emit_by_name(state.tab_click, "pressed", 2, 12.0, 12.0);
+    rename_ok = rename_ok && gtk_editable_get_editable(initial_tab) &&
+        gtk_widget_has_css_class(initial_tab, "editing-title");
+    if (rename_ok) {
+        char *original_title = strdup(gtk_editable_get_text(initial_tab));
+        gtk_editable_set_text(initial_tab, "ECTEG — título editado");
+        rename_ok = !strcmp(gtk_editable_get_text(state.title), "ECTEG — título editado") && state.active->dirty;
+        gtk_editable_set_text(initial_tab, original_title); free(original_title);
+        g_signal_emit_by_name(initial_tab, "activate");
+        rename_ok = rename_ok && !gtk_editable_get_editable(initial_tab) &&
+            !gtk_widget_has_css_class(initial_tab, "editing-title");
+        g_signal_emit_by_name(state.tab_click, "pressed", 2, 12.0, 12.0);
+        rename_ok = rename_ok && gtk_editable_get_editable(initial_tab);
+        tab_title_focus_left(NULL, initial_tab);
+        rename_ok = rename_ok && !gtk_editable_get_editable(initial_tab);
+    }
+    printf("UI tabs-renomear-duplo-clique-enter-foco: %s\n", rename_ok ? "OK" : "FALHOU"); ok = ok && rename_ok;
     gboolean resizable = false, homogeneous_h = true, homogeneous_v = true;
     g_object_get(state.window, "resizable", &resizable, NULL);
     g_object_get(state.workspace_stack, "hhomogeneous", &homogeneous_h, "vhomogeneous", &homogeneous_v, NULL);
@@ -4015,17 +4266,29 @@ static gboolean run_ui_assertions(Ptr unused) {
     printf("UI redimensionar-janela-paineis (mínimo %d × %dpx): %s\n", minimum_width, minimum_height, resize_ok ? "OK" : "FALHOU"); ok = ok && resize_ok;
     bool long_note_resize_ok = check_long_note_resize(); ok = ok && long_note_resize_ok;
     size_t inline_actions = 0;
-    for (Ptr child = gtk_widget_get_first_child(state.format_tools); child; child = gtk_widget_get_next_sibling(child))
-        if (gtk_widget_has_css_class(child, "icon-button")) inline_actions++;
-    bool toolbar_ok = inline_actions == 11 && state.format_color && state.format_color_popover;
+    size_t format_groups = 0;
+    for (Ptr group = gtk_widget_get_first_child(state.format_tools); group; group = gtk_widget_get_next_sibling(group)) {
+        if (gtk_widget_has_css_class(group, "format-group")) format_groups++;
+        for (Ptr child = gtk_widget_get_first_child(group); child; child = gtk_widget_get_next_sibling(child))
+            if (gtk_widget_has_css_class(child, "icon-button")) inline_actions++;
+    }
+    bool toolbar_ok = inline_actions == 11 && format_groups == 4 && state.format_color && state.format_color_popover &&
+        state.format_heading_popover && state.heading_choices[0] && state.heading_choices[6];
     printf("UI barra-formatacao-onze-acoes-diretas: %s\n", toolbar_ok ? "OK" : "FALHOU"); ok = ok && toolbar_ok;
     char original_theme[32]; snprintf(original_theme, sizeof original_theme, "%s", state.theme);
-    const char *theme_ids[] = {"white", "black", "system", "monokai", "tokyo-night", "dracula", "solarized-light"};
+    const char *theme_ids[] = {"white", "black", "system", "monokai", "tokyo-night", "dracula", "solarized-light", "catppuccin-latte"};
     bool themes_ok = gtk_source_buffer_get_language(state.editor_buffer) && gtk_source_buffer_get_language(state.split_buffer) &&
         gtk_source_buffer_get_highlight_syntax(state.editor_buffer) && gtk_source_buffer_get_highlight_syntax(state.split_buffer) &&
         gtk_source_buffer_get_style_scheme(state.editor_buffer) && gtk_source_buffer_get_style_scheme(state.split_buffer);
     for (size_t index = 0; index < sizeof theme_ids / sizeof theme_ids[0]; index++) {
         apply_theme(theme_ids[index]); themes_ok = themes_ok && strcmp(state.theme, theme_ids[index]) == 0 && state.theme_provider;
+        const char *scheme_theme = !strcmp(state.theme, "system") ? (source_is_light() ? "white" : "black") : state.theme;
+        char scheme_id[96]; snprintf(scheme_id, sizeof scheme_id, "notemd-%s", scheme_theme);
+        Ptr expected_scheme = gtk_source_style_scheme_manager_get_scheme(source_style_manager, scheme_id);
+        themes_ok = themes_ok && expected_scheme &&
+            gtk_source_buffer_get_style_scheme(state.editor_buffer) == expected_scheme &&
+            gtk_source_buffer_get_style_scheme(state.split_buffer) == expected_scheme;
+        if (!strcmp(state.theme, "catppuccin-latte")) themes_ok = themes_ok && source_is_light();
     }
     apply_theme(original_theme);
     printf("UI temas-apenas-markdown-paletas: %s\n", themes_ok ? "OK" : "FALHOU"); ok = ok && themes_ok;
@@ -4094,14 +4357,17 @@ static gboolean run_ui_assertions(Ptr unused) {
     tag_ok = tag_ok && initial->button == NULL; state.selected_tag[0] = '\0'; rebuild_sidebar();
     printf("UI filtro-tags: %s\n", tag_ok ? "OK" : "FALHOU"); ok = ok && tag_ok;
 
+    select_editor_mode(NULL, "editor");
     state.loading = true; gtk_text_buffer_set_text(state.editor_buffer, "texto", -1); state.loading = false;
     TextIter selection_start, selection_end; gtk_text_buffer_get_iter_at_offset(state.editor_buffer, &selection_start, 0);
     gtk_text_buffer_get_iter_at_offset(state.editor_buffer, &selection_end, 5);
     gtk_text_buffer_select_range(state.editor_buffer, &selection_start, &selection_end); insert_markdown(NULL, "**|**");
     char *formatted = editor_text(); bool format_ok = strcmp(formatted, "**texto**") == 0; g_free(formatted);
+    insert_markdown(NULL, "**|**");
+    formatted = editor_text(); format_ok = format_ok && !strcmp(formatted, "texto"); g_free(formatted);
     state.loading = true; gtk_text_buffer_set_text(state.editor_buffer, "título", -1); state.loading = false;
     gtk_text_buffer_get_bounds(state.editor_buffer, &selection_start, &selection_end);
-    gtk_text_buffer_select_range(state.editor_buffer, &selection_start, &selection_end); gtk_drop_down_set_selected(state.format_heading, 4);
+    gtk_text_buffer_select_range(state.editor_buffer, &selection_start, &selection_end); g_signal_emit_by_name(state.heading_choices[4], "clicked");
     formatted = editor_text(); format_ok = format_ok && strcmp(formatted, "#### título") == 0; g_free(formatted);
     state.loading = true; gtk_text_buffer_set_text(state.editor_buffer, "apagado", -1); state.loading = false;
     gtk_text_buffer_get_bounds(state.editor_buffer, &selection_start, &selection_end);
@@ -4112,6 +4378,43 @@ static gboolean run_ui_assertions(Ptr unused) {
     gtk_text_buffer_select_range(state.editor_buffer, &selection_start, &selection_end); g_signal_emit_by_name(state.format_colors[4], "clicked");
     formatted = editor_text(); format_ok = format_ok && strcmp(formatted, "<span style=\"color:#0969da\">colorido</span>") == 0; g_free(formatted);
     printf("UI formatacao-selecao: %s\n", format_ok ? "OK" : "FALHOU"); ok = ok && format_ok;
+
+    gtk_text_buffer_set_text(state.editor_buffer, "## maçã\n# Segunda\nnormal\n", -1);
+    gtk_text_buffer_get_iter_at_offset(state.editor_buffer, &selection_start, 0);
+    gtk_text_buffer_get_iter_at_offset(state.editor_buffer, &selection_end, 8);
+    gtk_text_buffer_select_range(state.editor_buffer, &selection_end, &selection_start);
+    g_signal_emit_by_name(state.heading_choices[3], "clicked");
+    formatted = editor_text(); bool headings_ok = !strcmp(formatted, "### maçã\n# Segunda\nnormal\n"); g_free(formatted);
+    char *heading_name = NULL; g_object_get(state.format_heading, "label", &heading_name, NULL);
+    headings_ok = headings_ok && heading_name && !strcmp(heading_name, heading_label(3)); g_free(heading_name);
+    gtk_text_buffer_undo(state.editor_buffer);
+    formatted = editor_text(); headings_ok = headings_ok && !strcmp(formatted, "## maçã\n# Segunda\nnormal\n"); g_free(formatted);
+    gtk_text_buffer_get_bounds(state.editor_buffer, &selection_start, &selection_end);
+    gtk_text_buffer_select_range(state.editor_buffer, &selection_end, &selection_start);
+    g_signal_emit_by_name(state.heading_choices[0], "clicked");
+    formatted = editor_text(); headings_ok = headings_ok && !strcmp(formatted, "maçã\nSegunda\nnormal\n"); g_free(formatted);
+    gtk_text_buffer_get_iter_at_offset(state.editor_buffer, &selection_start, 2);
+    gtk_text_buffer_select_range(state.editor_buffer, &selection_start, &selection_start);
+    g_signal_emit_by_name(state.heading_choices[2], "clicked");
+    formatted = editor_text(); headings_ok = headings_ok && !strcmp(formatted, "## maçã\nSegunda\nnormal\n"); g_free(formatted);
+    printf("UI titulos-substituir-paragrafo-multilinha-undo: %s\n", headings_ok ? "OK" : "FALHOU"); ok = ok && headings_ok;
+
+    gtk_text_buffer_set_text(state.editor_buffer, "", -1); insert_markdown(NULL, "_|_");
+    gtk_text_buffer_insert_at_cursor(state.editor_buffer, "á", -1);
+    formatted = editor_text(); bool caret_ok = !strcmp(formatted, "_á_"); g_free(formatted);
+    printf("UI formatacao-cursor-entre-marcadores: %s\n", caret_ok ? "OK" : "FALHOU"); ok = ok && caret_ok;
+
+    select_editor_mode(NULL, "split");
+    gtk_text_buffer_set_text(state.split_buffer, "alpha β gamma", -1);
+    gtk_text_buffer_get_iter_at_offset(state.split_buffer, &selection_start, 6);
+    gtk_text_buffer_get_iter_at_offset(state.split_buffer, &selection_end, 7);
+    gtk_text_buffer_select_range(state.split_buffer, &selection_end, &selection_start); insert_markdown(NULL, "**|**");
+    formatted = editor_text(); bool split_format_ok = !strcmp(formatted, "alpha **β** gamma"); g_free(formatted);
+    insert_markdown(NULL, "**|**");
+    formatted = editor_text(); split_format_ok = split_format_ok && !strcmp(formatted, "alpha β gamma"); g_free(formatted);
+    g_signal_emit_by_name(state.heading_choices[1], "clicked");
+    formatted = editor_text(); split_format_ok = split_format_ok && !strcmp(formatted, "# alpha β gamma"); g_free(formatted);
+    printf("UI formatacao-dividido-selecao-unicode: %s\n", split_format_ok ? "OK" : "FALHOU"); ok = ok && split_format_ok;
 
     gtk_text_buffer_set_text(state.editor_buffer, "Alpha beta ALPHA", -1); show_find(NULL, NULL);
     gtk_editable_set_text(state.find_entry, "alpha"); gtk_editable_set_text(state.replace_entry, "omega"); find_next(NULL, NULL);
@@ -4477,6 +4780,12 @@ static void activate(Ptr app, Ptr unused) {
     gtk_widget_set_hexpand(state.header_tabs, true); gtk_widget_set_valign(state.header_tabs, GTK_ALIGN_CENTER);
     gtk_widget_set_visible(state.header_tabs, false);
     state.tabbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4); gtk_widget_add_css_class(state.tabbar, "tabbar");
+    /* Keep the double-click recognizer alive when selecting a tab rebuilds its title. */
+    Ptr tab_click = gtk_gesture_click_new(); gtk_gesture_single_set_button(tab_click, 1);
+    state.tab_click = tab_click;
+    gtk_event_controller_set_propagation_phase(tab_click, 1);
+    g_signal_connect_data(tab_click, "pressed", (void *)tab_title_pressed, NULL, NULL, 0);
+    gtk_widget_add_controller(state.tabbar, tab_click);
     gtk_scrolled_window_set_child(state.header_tabs, state.tabbar); gtk_box_append(header, state.header_tabs);
     Ptr title_drag_space = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_widget_set_size_request(title_drag_space, 24, -1); gtk_box_append(header, title_drag_space);
@@ -4590,13 +4899,42 @@ static void activate(Ptr app, Ptr unused) {
     gtk_widget_set_hexpand(state.format_scroll, true);
     gtk_scrolled_window_set_child(state.format_scroll, state.format_tools);
     gtk_box_append(formatbar, state.format_scroll);
-    static const char *heading_levels[] = {"H", "H1", "H2", "H3", "H4", "H5", "H6", NULL};
-    state.format_heading = gtk_drop_down_new_from_strings(heading_levels);
-    gtk_widget_set_tooltip_text(state.format_heading, tr("Título"));
+    Ptr heading_group = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
+    gtk_widget_add_css_class(heading_group, "format-group"); gtk_box_append(state.format_tools, heading_group);
+    Ptr heading_options = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2); margins(heading_options, 6, 6);
+    state.format_heading = gtk_menu_button_new();
+    gtk_widget_add_css_class(state.format_heading, "workspace-menu");
     gtk_widget_add_css_class(state.format_heading, "heading-selector");
-    g_signal_connect_data(state.format_heading, "notify::selected", (void *)heading_format_changed, NULL, NULL, 0);
-    gtk_box_append(state.format_tools, state.format_heading);
-    gtk_box_append(state.format_tools, gtk_separator_new(GTK_ORIENTATION_VERTICAL));
+    gtk_menu_button_set_label(state.format_heading, heading_label(0));
+    gtk_menu_button_set_always_show_arrow(state.format_heading, true);
+    gtk_widget_set_tooltip_text(state.format_heading, tr("Estilo do texto"));
+    state.format_heading_popover = gtk_popover_new();
+    gtk_widget_add_css_class(state.format_heading_popover, "heading-menu");
+    gtk_popover_set_child(state.format_heading_popover, heading_options);
+    gtk_menu_button_set_popover(state.format_heading, state.format_heading_popover);
+    for (unsigned level = 0; level <= 6; level++) {
+        Ptr choice = gtk_button_new_with_label(""); state.heading_choices[level] = choice;
+        gtk_widget_add_css_class(choice, "context-action"); gtk_widget_add_css_class(choice, "heading-option");
+        char css_class[32]; snprintf(css_class, sizeof css_class, "heading-level-%u", level);
+        gtk_widget_add_css_class(choice, css_class);
+        Ptr row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+        char badge_text[8]; if (level) snprintf(badge_text, sizeof badge_text, "H%u", level); else strcpy(badge_text, "¶");
+        Ptr badge = gtk_label_new(badge_text); gtk_widget_add_css_class(badge, "heading-badge");
+        Ptr label = gtk_label_new(heading_label(level)); gtk_label_set_xalign(label, 0.0f);
+        gtk_widget_add_css_class(label, "heading-preview"); gtk_widget_set_hexpand(label, true);
+        gtk_box_append(row, badge); gtk_box_append(row, label); gtk_button_set_child(choice, row);
+        g_signal_connect_data(choice, "clicked", (void *)heading_format_clicked, (Ptr)(size_t)level, NULL, 0);
+        gtk_box_append(heading_options, choice);
+        if (!level) gtk_box_append(heading_options, gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
+    }
+    gtk_box_append(heading_group, state.format_heading);
+    Ptr inline_group = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
+    Ptr list_group = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
+    Ptr insert_group = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
+    Ptr groups[] = {inline_group, list_group, insert_group};
+    for (size_t i = 0; i < sizeof groups / sizeof groups[0]; i++) {
+        gtk_widget_add_css_class(groups[i], "format-group"); gtk_box_append(state.format_tools, groups[i]);
+    }
     struct { const char *icon, *tooltip, *markdown; } formats[] = {
         {"format-text-bold-symbolic", "Negrito", "**|**"}, {"format-text-italic-symbolic", "Itálico", "_|_"},
         {"format-text-strikethrough-symbolic", "Rasurado", "~~|~~"}, {"insert-text-symbolic", "Código", "`|`"},
@@ -4605,17 +4943,18 @@ static void activate(Ptr app, Ptr unused) {
         {"insert-link-symbolic", "Ligação", "[|](https://)"}
     };
     for (size_t i = 0; i < sizeof formats / sizeof formats[0]; i++) {
-        if (i == 4 || i == 8) gtk_box_append(state.format_tools, gtk_separator_new(GTK_ORIENTATION_VERTICAL));
-        Ptr button = icon_button(formats[i].icon, tr(formats[i].tooltip));
+        Ptr button = i == 3 ? gtk_button_new_with_label("</>") : icon_button(formats[i].icon, tr(formats[i].tooltip));
+        gtk_widget_add_css_class(button, "icon-button");
+        if (i == 3) { gtk_widget_add_css_class(button, "code-format"); gtk_widget_set_tooltip_text(button, tr("Código")); }
         g_signal_connect_data(button, "clicked", (void *)insert_markdown, (Ptr)formats[i].markdown, NULL, 0);
-        gtk_box_append(state.format_tools, button);
+        gtk_box_append(i < 4 ? inline_group : i < 8 ? list_group : insert_group, button);
     }
     Ptr table = icon_button("insert-table-symbolic", tr("Tabela"));
     g_signal_connect_data(table, "clicked", (void *)insert_literal,
         "| Coluna 1 | Coluna 2 |\n| --- | --- |\n| Valor | Valor |\n", NULL, 0);
-    gtk_box_append(state.format_tools, table);
+    gtk_box_append(insert_group, table);
     Ptr image = icon_button("insert-image-symbolic", tr("Imagem…"));
-    g_signal_connect_data(image, "clicked", (void *)insert_image, NULL, NULL, 0); gtk_box_append(state.format_tools, image);
+    g_signal_connect_data(image, "clicked", (void *)insert_image, NULL, NULL, 0); gtk_box_append(insert_group, image);
     Ptr color_choices = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3); margins(color_choices, 8, 8);
     state.format_color = workspace_menu("color-select-symbolic", tr("Cor do texto"), color_choices, &state.format_color_popover);
     static const char *color_names[] = {"Vermelho", "Laranja", "Amarelo", "Verde", "Azul", "Roxo"};
@@ -4627,7 +4966,7 @@ static void activate(Ptr app, Ptr unused) {
         g_signal_connect_data(choice, "clicked", (void *)insert_text_color, (Ptr)color_values[index], NULL, 0);
         gtk_box_append(color_choices, choice);
     }
-    gtk_box_append(state.format_tools, state.format_color);
+    gtk_box_append(inline_group, state.format_color);
     Ptr modes = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1); gtk_widget_add_css_class(modes, "mode-switcher");
     state.mode_editor = icon_button("document-edit-symbolic", tr("Editar nota"));
     state.mode_visual = icon_button("view-grid-symbolic", tr("Editar visualmente"));

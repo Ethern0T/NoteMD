@@ -13,13 +13,18 @@
 @define-color notemd_selection alpha(@theme_selected_bg_color, .15);
 @define-color notemd_code_surface mix(@notemd_paper, @notemd_accent, .14);
 @define-color notemd_code_border alpha(@notemd_accent, .34);
-/* Keep assigned text colors readable on both light and dark surfaces. */
-@define-color notemd_red mix(#d1242f, @theme_fg_color, .6);
-@define-color notemd_orange mix(#bc4c00, @theme_fg_color, .6);
-@define-color notemd_yellow mix(#9a6700, @theme_fg_color, .6);
-@define-color notemd_green mix(#1a7f37, @theme_fg_color, .6);
-@define-color notemd_blue mix(#0969da, @theme_fg_color, .6);
-@define-color notemd_purple mix(#8250df, @theme_fg_color, .6);
+@define-color notemd_menu_surface @notemd_paper;
+@define-color notemd_menu_fg @theme_fg_color;
+@define-color notemd_menu_border @notemd_border;
+@define-color notemd_menu_hover @notemd_navigation_selection;
+@define-color notemd_menu_muted @notemd_muted;
+/* Saturated fallback palette; apply_theme supplies light/dark library colors. */
+@define-color notemd_red #d50032;
+@define-color notemd_orange #b83b00;
+@define-color notemd_yellow #8f6200;
+@define-color notemd_green #00772b;
+@define-color notemd_blue #0057e6;
+@define-color notemd_purple #791fe8;
 
 window {
   background: @notemd_chrome;
@@ -106,7 +111,13 @@ button.icon-button:disabled { opacity: .4; }
   font-size: 14px;
 }
 .library-tree button:hover, .tags-section button:hover { background: @notemd_hover; }
-.library-tree button.notebook-title { font-size: 15px; font-weight: 600; }
+/* Use a UI face instead of inheriting the desktop's programming font. */
+.library-tree button.notebook-title, .library-tree button.sidebar-note, .tabbar {
+  font-family: "Noto Sans", "DejaVu Sans", sans-serif;
+  font-style: normal;
+  letter-spacing: 0;
+}
+.library-tree button.notebook-title { font-size: 15px; font-weight: 700; }
 .notebook-tree { margin-bottom: 6px; }
 .notebook-tree > title { min-height: 32px; }
 .notebook-tree > title > expander { color: @notemd_faint; }
@@ -118,6 +129,7 @@ button.icon-button:disabled { opacity: .4; }
 }
 .library-tree button.selected-item, .tags-section button.selected-tag {
   background: @notemd_navigation_selection;
+  background-image: none;
   color: @theme_fg_color;
   font-weight: 600;
   box-shadow: none;
@@ -146,13 +158,13 @@ button.icon-button:disabled { opacity: .4; }
 .tags-section button image { -gtk-icon-size: 14px; color: @notemd_faint; }
 .tags-section .tag-count { font-size: 12px; font-weight: 400; color: @notemd_muted; padding-left: 6px; }
 
-/* Color the title itself, including hover and selection; actions stay neutral. */
-.library-tree button.color-red label, popover.library-menu .context-title.color-red { color: @notemd_red; }
-.library-tree button.color-orange label, popover.library-menu .context-title.color-orange { color: @notemd_orange; }
-.library-tree button.color-yellow label, popover.library-menu .context-title.color-yellow { color: @notemd_yellow; }
-.library-tree button.color-green label, popover.library-menu .context-title.color-green { color: @notemd_green; }
-.library-tree button.color-blue label, popover.library-menu .context-title.color-blue { color: @notemd_blue; }
-.library-tree button.color-purple label, popover.library-menu .context-title.color-purple { color: @notemd_purple; }
+/* Color titles and their icons, including hover and selection; actions stay neutral. */
+.library-tree button.color-red label, .library-tree button.notebook-title.color-red image, .library-tree button.sidebar-note.color-red image, popover.library-menu .context-title.color-red, popover.library-menu .context-header.color-red image { color: @notemd_red; }
+.library-tree button.color-orange label, .library-tree button.notebook-title.color-orange image, .library-tree button.sidebar-note.color-orange image, popover.library-menu .context-title.color-orange, popover.library-menu .context-header.color-orange image { color: @notemd_orange; }
+.library-tree button.color-yellow label, .library-tree button.notebook-title.color-yellow image, .library-tree button.sidebar-note.color-yellow image, popover.library-menu .context-title.color-yellow, popover.library-menu .context-header.color-yellow image { color: @notemd_yellow; }
+.library-tree button.color-green label, .library-tree button.notebook-title.color-green image, .library-tree button.sidebar-note.color-green image, popover.library-menu .context-title.color-green, popover.library-menu .context-header.color-green image { color: @notemd_green; }
+.library-tree button.color-blue label, .library-tree button.notebook-title.color-blue image, .library-tree button.sidebar-note.color-blue image, popover.library-menu .context-title.color-blue, popover.library-menu .context-header.color-blue image { color: @notemd_blue; }
+.library-tree button.color-purple label, .library-tree button.notebook-title.color-purple image, .library-tree button.sidebar-note.color-purple image, popover.library-menu .context-title.color-purple, popover.library-menu .context-header.color-purple image { color: @notemd_purple; }
 
 .app-header .header-tabs { min-width: 0; min-height: 32px; background: transparent; border: 0; box-shadow: none; }
 .app-header .header-tabs viewport { background: transparent; }
@@ -171,7 +183,7 @@ button.icon-button:disabled { opacity: .4; }
   font-size: 14px;
 }
 .tabbar entry.tab-title { color: @theme_fg_color; font-weight: 600; }
-.tabbar entry.tab-title:focus-within { box-shadow: inset 0 -1px @notemd_accent; }
+.tabbar entry.tab-title.editing-title:focus-within { box-shadow: inset 0 -1px @notemd_faint; }
 .tabbar button.tab-close {
   min-width: 20px;
   min-height: 20px;
@@ -185,42 +197,53 @@ button.icon-button:disabled { opacity: .4; }
 .dirty-indicator { margin: 0 2px; color: @notemd_accent; font-size: 7px; }
 
 .formatbar {
-  padding: 4px 10px;
+  padding: 7px 10px;
   background: @notemd_paper;
   border-bottom: 1px solid @notemd_border;
+  font-family: "Noto Sans", "DejaVu Sans", sans-serif;
 }
-.formatbar button.icon-button {
-  min-width: 28px;
-  min-height: 28px;
-  padding: 1px;
+.format-tools { padding: 0 3px 0 0; }
+.format-group {
+  padding: 2px;
+  margin-right: 5px;
+  background: alpha(@theme_fg_color, .035);
+  border: 1px solid @notemd_border;
+  border-radius: 7px;
+}
+.formatbar button.icon-button, .formatbar menubutton.workspace-menu > button {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 1px 3px;
   background: transparent;
-  color: @notemd_muted;
+  color: @theme_fg_color;
+  border: 0;
+  border-radius: 5px;
+  box-shadow: none;
 }
-.formatbar button.icon-button:hover { background: @notemd_hover; color: @theme_fg_color; }
-.format-tools > separator { margin: 5px 5px; background: @notemd_border; }
+.formatbar button.icon-button image { -gtk-icon-size: 18px; }
+.formatbar button.icon-button:hover, .formatbar menubutton.workspace-menu > button:hover {
+  background: @notemd_navigation_selection;
+}
+.formatbar button.icon-button:active { background: @notemd_navigation_selection; }
+.formatbar button.code-format { font-family: monospace; font-size: 13px; font-weight: 600; }
 .formatbar scrolledwindow, .formatbar viewport { background: transparent; border: 0; box-shadow: none; }
-.formatbar menubutton.workspace-menu > button {
-  min-width: 28px;
-  min-height: 28px;
-  padding: 1px;
-  background: transparent;
-  color: @notemd_muted;
-  border: 0;
-  box-shadow: none;
-}
-.formatbar menubutton.workspace-menu > button:hover { background: @notemd_hover; color: @theme_fg_color; }
-.formatbar dropdown.heading-selector { padding: 0; }
-.formatbar dropdown.heading-selector > button {
-  min-width: 35px;
-  min-height: 28px;
-  padding: 0 5px;
-  background: transparent;
-  color: @notemd_muted;
-  border: 0;
-  box-shadow: none;
-  font-size: 14px;
+.formatbar menubutton.heading-selector > button {
+  min-width: 108px;
+  padding: 1px 9px;
+  font-size: 13px;
   font-weight: 600;
 }
+.heading-menu button.heading-option { min-width: 210px; min-height: 32px; padding: 5px 9px; }
+.heading-menu .heading-badge { min-width: 27px; font-size: 12px; font-weight: 600; color: @notemd_muted; }
+.heading-menu .heading-preview { font-size: 14px; font-weight: 600; }
+.heading-menu .heading-level-0 .heading-preview { font-weight: 400; }
+.heading-menu .heading-level-1 .heading-preview { font-size: 22px; }
+.heading-menu .heading-level-2 .heading-preview { font-size: 20px; }
+.heading-menu .heading-level-3 .heading-preview { font-size: 18px; }
+.heading-menu .heading-level-4 .heading-preview { font-size: 16px; }
+.heading-menu .heading-level-5 .heading-preview { font-size: 15px; }
+.heading-menu button.current-heading { background: @notemd_navigation_selection; }
+.heading-menu separator { margin: 4px 6px; background: @notemd_border; }
 .mode-switcher { padding: 2px; background: alpha(@theme_fg_color, .045); border-radius: 5px; }
 .formatbar button.mode-button { min-width: 28px; min-height: 28px; padding: 1px; border-radius: 4px; }
 .formatbar button.mode-button image { -gtk-icon-size: 16px; }
@@ -368,7 +391,7 @@ textview.preview, textview.preview text { font-family: sans-serif; font-size: 17
 /* Menus and note metadata share the compact workspace rhythm. */
 popover { color: @theme_fg_color; }
 popover > contents { background: @notemd_paper; border: 1px solid @notemd_border; border-radius: 7px; }
-popover .context-menu { min-width: 220px; }
+popover .notemd-context-menu { min-width: 220px; }
 popover .context-title { padding: 2px 5px 5px; font-size: 14px; font-weight: 650; }
 popover .context-section { padding: 7px 5px 2px; }
 popover button.context-action { min-height: 30px; padding: 2px 7px; background: transparent; color: @theme_fg_color; border: 0; box-shadow: none; font-size: 14px; }
@@ -427,27 +450,33 @@ button:focus-visible, menubutton > button:focus-visible {
 .notemd-window .library-tree button:not(.color-swatch):active,
 .notemd-window .library-tree button:not(.color-swatch):checked,
 .notemd-window .library-tree button:not(.color-swatch):selected,
+.notemd-window menubutton.workspace-menu > button:focus-visible,
 .notemd-window .library-tree button:not(.color-swatch):focus-visible,
-.notemd-window popover.library-menu button.context-action:active,
-.notemd-window popover.library-menu button.context-action:focus-visible,
+.notemd-window menubutton.workspace-menu > button:checked,
+.notemd-window popover button.context-action:hover,
+.notemd-window popover button.context-action:active,
+.notemd-window popover button.context-action:focus-visible,
 .notemd-window popover modelbutton:hover,
 .notemd-window popover modelbutton:active,
 .notemd-window popover modelbutton:selected,
 .notemd-window popover modelbutton:focus-visible {
   background: @notemd_navigation_selection;
+  background-image: none;
   color: @theme_fg_color;
   box-shadow: none;
 }
+.notemd-window menubutton.workspace-menu > button:focus-visible,
 .notemd-window .library-tree button:not(.color-swatch):focus-visible,
-.notemd-window popover.library-menu button.context-action:focus-visible,
+.notemd-window popover button.context-action:focus-visible,
 .notemd-window popover modelbutton:focus-visible {
   outline: 1px solid @notemd_faint;
   outline-offset: -2px;
 }
-.notemd-window popover.library-menu button.context-action.destructive-action { color: @notemd_red; }
+.notemd-window popover button.context-action.destructive-action { color: @notemd_red; }
 .notemd-window entry.tab-title selection,
 .notemd-window .note-details entry selection {
   background: @notemd_navigation_selection;
+  background-image: none;
   color: @theme_fg_color;
 }
 .sidebar-panel searchentry:focus-within, .note-details entry:focus-within {
@@ -492,3 +521,84 @@ popover listview row:selected { background: @notemd_selection; color: @theme_fg_
 .palette-solarized-light .sample-sidebar { background: mix(#eee8d5, #fdf6e3, .24); }
 .palette-solarized-light .sample-paper { background: #fdf6e3; }
 .palette-solarized-light .sample-accent { background: #326c84; }
+
+.palette-catppuccin-latte .sample-sidebar { background: #dce0e8; }
+.palette-catppuccin-latte .sample-paper { background: #eff1f5; }
+.palette-catppuccin-latte .sample-accent { background: #8839ef; }
+
+/* Override the desktop's popover gradients, arrow and focus frames as one card. */
+.notemd-window popover.library-menu,
+.notemd-window popover.library-menu.background {
+  background: transparent;
+  color: @notemd_menu_fg;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  font-family: "Noto Sans", "DejaVu Sans", sans-serif;
+}
+.notemd-window popover.library-menu > contents,
+.notemd-window popover.library-menu.background > contents {
+  background: @notemd_menu_surface;
+  background-image: none;
+  color: @notemd_menu_fg;
+  padding: 0;
+  border: 1px solid @notemd_menu_border;
+  border-radius: 10px;
+  outline: none;
+  box-shadow: 0 6px 18px alpha(black, .14);
+}
+.notemd-window popover.library-menu > arrow { background: transparent; border: 0; box-shadow: none; }
+.notemd-window popover.library-menu .notemd-context-menu { min-width: 244px; }
+.notemd-window popover.library-menu .context-header { padding: 7px 9px 5px; }
+.notemd-window popover.library-menu .context-header image { -gtk-icon-size: 20px; }
+.notemd-window popover.library-menu .context-title { padding: 0; font-size: 15px; font-weight: 700; }
+.notemd-window popover.library-menu .context-section { padding: 3px 9px 0; color: @notemd_menu_muted; font-size: 11px; font-weight: 600; }
+.notemd-window popover.library-menu separator { min-height: 1px; margin: 3px 7px; background: @notemd_menu_border; }
+.notemd-window popover.library-menu button.context-action,
+.notemd-window popover.library-menu button.context-action:focus {
+  min-height: 30px;
+  padding: 3px 9px;
+  background: transparent;
+  background-image: none;
+  color: @notemd_menu_fg;
+  border: 0;
+  border-radius: 6px;
+  outline: none;
+  box-shadow: none;
+  font-size: 13px;
+}
+.notemd-window popover.library-menu button.context-action image { color: @notemd_menu_muted; -gtk-icon-size: 16px; }
+.notemd-window popover.library-menu button.context-action:hover,
+.notemd-window popover.library-menu button.context-action:active,
+.notemd-window popover.library-menu button.context-action:focus-visible { background: @notemd_menu_hover; }
+.notemd-window popover.library-menu button.context-action:focus-visible { outline: 1px solid @notemd_menu_muted; outline-offset: -2px; }
+.notemd-window popover.library-menu button.context-action.destructive-action,
+.notemd-window popover.library-menu button.context-action.destructive-action image { color: @notemd_red; }
+.notemd-window popover.library-menu .color-palette { padding: 6px 9px 7px; }
+.notemd-window popover.library-menu button.color-swatch {
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  outline: none;
+  box-shadow: none;
+  color: @notemd_menu_surface;
+}
+.notemd-window popover.library-menu button.color-swatch image { opacity: 0; -gtk-icon-size: 14px; }
+.notemd-window popover.library-menu button.color-swatch.chosen-color image,
+.notemd-window popover.library-menu button.color-swatch.color-none image { opacity: 1; }
+.notemd-window popover.library-menu button.color-swatch.color-none { background: @notemd_menu_hover; color: @notemd_menu_muted; }
+.notemd-window popover.library-menu button.color-swatch.color-red { background: @notemd_red; }
+.notemd-window popover.library-menu button.color-swatch.color-orange { background: @notemd_orange; }
+.notemd-window popover.library-menu button.color-swatch.color-yellow { background: @notemd_yellow; }
+.notemd-window popover.library-menu button.color-swatch.color-green { background: @notemd_green; }
+.notemd-window popover.library-menu button.color-swatch.color-blue { background: @notemd_blue; }
+.notemd-window popover.library-menu button.color-swatch.color-purple { background: @notemd_purple; }
+.notemd-window popover.library-menu button.color-swatch:hover,
+.notemd-window popover.library-menu button.color-swatch:focus-visible { outline: 2px solid @notemd_menu_muted; outline-offset: 2px; }
+.notemd-window popover.library-menu button.color-swatch.chosen-color { box-shadow: 0 0 0 2px @notemd_menu_surface, 0 0 0 3px @notemd_menu_muted; }
+.notemd-window .notebook-tree > title,
+.notemd-window .notebook-tree > title:focus,
+.notemd-window .notebook-tree > title:focus-within { background: transparent; border: 0; outline: none; box-shadow: none; }
+.notemd-window .notebook-tree:focus-visible > title { outline: 1px solid @notemd_faint; outline-offset: -2px; border-radius: 5px; }

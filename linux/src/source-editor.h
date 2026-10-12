@@ -39,7 +39,7 @@ static Ptr source_code_language(const char *name) {
 }
 
 static bool source_is_light(void) {
-    return !strcmp(state.theme, "white") || !strcmp(state.theme, "solarized-light") ||
+    return !strcmp(state.theme, "white") || !strcmp(state.theme, "solarized-light") || !strcmp(state.theme, "catppuccin-latte") ||
         (!strcmp(state.theme, "system") && !is_system_dark());
 }
 
