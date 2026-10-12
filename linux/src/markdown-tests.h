@@ -26,7 +26,7 @@ static bool preview_has_tag_at(Ptr buffer, const char *text, const char *needle,
     g_slist_free(tags); return found;
 }
 
-static int markdown_self_test(void) {
+int markdown_self_test(void) {
     const char *sample = "### Secção\n\nTexto com **negrito e _itálico_**, *ênfase*, ~~rasurado~~, `a_*b` e \\*literal\\*.\n"
         "Continua aqui.  \nNova linha &amp; &#xE3;.\n\n"
         "- Primeiro\n  - Segundo **forte**\n- [X] Feito\n\n3. Terceiro\n4. Quarto\n\n"
@@ -48,7 +48,7 @@ static int markdown_self_test(void) {
     ok = ok && strstr(setext, "<h1>Título</h1>"); free(setext);
 
     /* Exercise the actual native grammar and every palette without a window. */
-    source_managers(); Ptr language = gtk_source_language_manager_get_language(source_language_manager, "notemd-markdown");
+    source_managers(); Ptr language = gtk_source_language_manager_get_language(source_language_manager_current(), "notemd-markdown");
     Ptr buffer = gtk_source_buffer_new(NULL); gtk_source_buffer_set_language(buffer, language);
     gtk_text_buffer_set_text(buffer, sample, -1);
     const char *themes[] = {"white", "black", "monokai", "tokyo-night", "dracula", "solarized-light"};
@@ -58,7 +58,7 @@ static int markdown_self_test(void) {
     const unsigned strings[] = {0x397148, 0xa9c795, 0xa8c775, 0xa9ca97, 0xa6d1ad, 0x577423};
     for (size_t i = 0; i < sizeof themes / sizeof themes[0]; i++) {
         char id[80]; snprintf(id, sizeof id, "notemd-%s", themes[i]);
-        Ptr scheme = gtk_source_style_scheme_manager_get_scheme(source_style_manager, id);
+        Ptr scheme = gtk_source_style_scheme_manager_get_scheme(source_style_manager_current(), id);
         gtk_source_buffer_set_style_scheme(buffer, scheme); TextIter begin, end;
         gtk_text_buffer_get_bounds(buffer, &begin, &end); gtk_source_buffer_ensure_highlight(buffer, &begin, &end);
         bool valid = language && scheme && syntax_color_at(buffer, sample, "Secção", heading[i]) &&

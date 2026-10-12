@@ -155,7 +155,7 @@ static void preview_ast_blocks(Ptr buffer, const MarkdownNode *node, unsigned de
     }
 }
 
-static void render_markdown(Ptr buffer, const char *source) {
+void render_markdown(Ptr buffer, const char *source) {
     gtk_text_buffer_set_text(buffer, "", -1); MarkdownNode *root = markdown_parse(source);
     if (root) preview_ast_blocks(buffer, root, 0, false, NULL);
     else preview_tagged_segment(buffer, source, strlen(source), NULL);

@@ -22,8 +22,17 @@ Para criar e instalar o pacote Debian/Ubuntu (`.deb`):
 
 ```sh
 make deb
-sudo apt install ./build/notemd_1.2.0_amd64.deb
+sudo apt install ./build/notemd_1.3.0_amd64.deb
 ```
+
+## Importar e exportar notebooks
+
+No menu de contexto de um notebook, escolha **Exportar notebook…** para criar um arquivo
+`.notemd.zip`. O arquivo inclui todas as notas, metadados, ordem, cores, tags e assets do notebook.
+
+Para restaurar ou transferir um notebook, abra o menu da aplicação e escolha **Importar notebook…**.
+Se já existir um notebook com o mesmo nome, a aplicação cria automaticamente um nome único sem
+substituir os dados existentes. A importação requer o comando `unzip`; a exportação requer `zip`.
 
 ## Diretório de Notas
 
@@ -98,9 +107,15 @@ O tamanho da fonte altera a apresentação da aplicação; os ficheiros Markdown
 
 As tabs ficam na barra de título, junto ao botão da biblioteca, com fecho e indicador de alterações.
 O scroll horizontal permite abrir várias notas sem aumentar a largura mínima da janela.
+O nome fica estático até fazer duplo clique sobre ele. Enter ou sair do campo termina a edição;
+as alterações seguem a preferência de gravação automática.
 
-A barra de formatação apresenta diretamente os ícones de negrito, itálico, rasurado, código, listas,
-tarefas, citação, ligação, tabela e imagem. O ícone de cor abre a paleta. Em janelas estreitas, a barra
+A barra de formatação agrupa estilo do texto, negrito/itálico/código/cor, listas e inserções.
+O menu de estilo apresenta Parágrafo e Título 1–6, com prévias de tamanho e o nível da linha atual.
+Escolher um nível substitui o título da linha ou das linhas selecionadas; Parágrafo remove os marcadores.
+Negrito, itálico, rasurado e código mantêm o texto selecionado; repetir a ação retira os marcadores.
+Sem seleção, o cursor fica entre os marcadores, pronto para escrever. A formatação também usa
+a seleção do editor no modo dividido. O ícone de cor abre a paleta. Em janelas estreitas, a barra
 permite deslocamento horizontal sem impor a sua largura à janela. A pega no canto inferior direito
 permite redimensionar a janela com o rato, além das bordas nativas.
 A coluna dos números de linha partilha o scroll do editor sem impor a altura do documento à janela.
@@ -109,13 +124,20 @@ O teste de interface compara a altura mínima com uma linha e com 2000 linhas no
 ## Temas e ícone
 
 As preferências mostram amostras das paletas **Claro**, **Escuro**, **Sistema**, **Monokai**, **Tokyo Night**,
-**Dracula** e **Solarized Light**. Cada paleta distingue a página de escrita, a biblioteca e as barras da aplicação.
+**Dracula**, **Solarized Light** e **Catppuccin Latte**. Cada paleta distingue a página de escrita, a biblioteca e as barras da aplicação.
 As cores do Markdown e da pré-visualização acompanham o tema escolhido.
+Catppuccin Latte usa a [paleta oficial clara do Catppuccin](https://catppuccin.com/palette/),
+com ajustes de contraste no texto de sintaxe. Também está incluído na instalação e no pacote Debian.
 
 Na biblioteca, a cor atribuída a cada caderno ou nota aparece no próprio título, incluindo na seleção.
-Os tons acompanham o tema para manter a leitura. Ícones distinguem cadernos e notas, as ações aparecem
+Os tons saturados acompanham o tema para manter a leitura, tanto nos títulos como nos ícones.
+Os nomes usam Noto Sans, com alternativa DejaVu Sans, independentemente da fonte do ambiente de trabalho.
+Ícones distinguem cadernos e notas, as ações aparecem
 ao passar o rato ou navegar com o teclado, e as contagens de tags ficam alinhadas à direita.
-O painel usa uma superfície derivada da paleta ativa, com seleção neutra. A aplicação arranca com a
+O painel usa uma superfície derivada da paleta ativa, com seleção neutra. Os menus da biblioteca e
+da aplicação também usam realces neutros ao passar o rato, clicar ou navegar com o teclado.
+O menu de contexto da biblioteca tem uma superfície neutra própria, sem degradês do ambiente de trabalho,
+abre junto ao ponto clicado e mostra cores sólidas com indicação da cor escolhida. A aplicação arranca com a
 biblioteca oculta e os cadernos recolhidos; o botão da biblioteca ou `Ctrl+B` mostra o painel.
 
 O ícone de Linux é desenhado em [SVG](assets/pt.notemd.NoteMD.svg), com margem transparente e versões PNG

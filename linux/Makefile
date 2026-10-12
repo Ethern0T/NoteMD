@@ -1,16 +1,31 @@
 CC ?= cc
 CFLAGS ?= -O2 -pipe
-CFLAGS += -std=c17 -Wall -Wextra -Wno-format-truncation -DNOTEMD_DEV_DATA_DIR='"$(abspath .)"'
-LDFLAGS += -ldl
+CFLAGS += -std=c17 -Wall -Wextra -Wmissing-prototypes -Wno-format-truncation -Werror=implicit-function-declaration \
+	-ffunction-sections -fdata-sections -DNOTEMD_DEV_DATA_DIR='"$(abspath .)"'
+LDFLAGS += -Wl,--gc-sections -ldl
 ICON_SIZES = 32 48 64 128 256 512 1024
+VERSION := $(shell cat ../VERSION)
 
-.PHONY: all clean run install-user uninstall-user deb
+.PHONY: all clean check run install-user uninstall-user deb
 
 all: build/notemd
 
-build/notemd: src/main.c src/markdown.h src/pdf.h src/preview.h src/source-editor.h src/markdown-tests.h src/vendor/md4c-abi.h
+SOURCES = src/main.c src/core.c src/library.c src/export.c src/editor.c src/ui.c src/tests.c
+OBJECTS = $(patsubst src/%.c,build/%.o,$(SOURCES))
+HEADERS = src/internal.h src/markdown.h src/pdf.h src/preview.h src/source-editor.h src/markdown-tests.h src/vendor/md4c-abi.h
+
+build/notemd: $(OBJECTS)
+	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
+
+build/%.o: src/%.c $(HEADERS)
 	@mkdir -p build
-	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+check: build/notemd
+	./build/notemd --self-test
+	./build/notemd --settings-self-test
+	./build/notemd --export-self-test
+	./build/notemd --markdown-self-test
 
 run: build/notemd
 	./build/notemd
@@ -46,12 +61,13 @@ uninstall-user:
 	rm -f $(HOME)/.local/share/metainfo/pt.notemd.NoteMD.metainfo.xml
 
 clean:
-	rm -f build/notemd
+	rm -f build/notemd build/*.o build/notemd.aux
 
 deb: build/notemd
 	rm -rf build/deb
 	install -Dm755 build/notemd build/deb/usr/bin/notemd
 	install -Dm644 packaging/debian-control build/deb/DEBIAN/control
+	sed -i 's/^Version:.*/Version: $(VERSION)/' build/deb/DEBIAN/control
 	install -Dm644 packaging/pt.notemd.NoteMD.desktop build/deb/usr/share/applications/pt.notemd.NoteMD.desktop
 	install -Dm644 packaging/pt.notemd.NoteMD.metainfo.xml build/deb/usr/share/metainfo/pt.notemd.NoteMD.metainfo.xml
 	install -Dm644 assets/pt.notemd.NoteMD.svg build/deb/usr/share/icons/hicolor/scalable/apps/pt.notemd.NoteMD.svg
@@ -70,4 +86,4 @@ deb: build/notemd
 	install -Dm644 themes/dracula.css build/deb/usr/share/notemd/themes/dracula.css
 	install -Dm644 themes/solarized-light.css build/deb/usr/share/notemd/themes/solarized-light.css
 	install -Dm644 themes/catppuccin-latte.css build/deb/usr/share/notemd/themes/catppuccin-latte.css
-	dpkg-deb --build --root-owner-group build/deb build/notemd_1.2.0_amd64.deb
+	dpkg-deb --build --root-owner-group build/deb build/notemd_$(VERSION)_amd64.deb
