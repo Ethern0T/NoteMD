@@ -104,16 +104,16 @@ int settings_self_test(void) {
     char temporary[] = "/tmp/notemd-settings-test-XXXXXX";
     if (!mkdtemp(temporary) || setenv("XDG_CONFIG_HOME", temporary, 1) != 0) return 1;
     load_settings();
-    bool ok = state.editor_font_size == EDITOR_FONT_DEFAULT;
+    bool ok = state.editor_font_size == EDITOR_FONT_DEFAULT && state.compact_ui;
     snprintf(state.root, sizeof state.root, "/tmp/NoteMD-notas-de-teste");
     snprintf(state.theme, sizeof state.theme, "dracula");
     snprintf(state.language, sizeof state.language, "fr");
-    state.autosave = false; state.editor_font_size = 19;
+    state.autosave = false; state.compact_ui = false; state.editor_font_size = 19;
     Note external = {0}; external.external = true;
     snprintf(external.markdown_path, sizeof external.markdown_path, "/tmp/nota externa.md");
     state.notes = &external; save_settings(); state = (State){0}; load_settings();
     ok = ok && state.editor_font_size == 19 && strcmp(state.theme, "dracula") == 0 &&
-        strcmp(state.language, "fr") == 0 && !state.autosave && state.external_count == 1 &&
+        strcmp(state.language, "fr") == 0 && !state.autosave && !state.compact_ui && state.external_count == 1 &&
         strcmp(state.external_paths[0], "/tmp/nota externa.md") == 0 &&
         strcmp(state.root, "/tmp/NoteMD-notas-de-teste") == 0;
     char path[PATH_MAX]; config_path(path);
@@ -128,6 +128,11 @@ int settings_self_test(void) {
     ok = write_atomic(path, "theme=monokai\nautosave=1\n") && ok;
     state = (State){0}; load_settings();
     ok = ok && state.editor_font_size == EDITOR_FONT_DEFAULT && strcmp(state.theme, "monokai") == 0 && state.autosave;
+    ok = ok && state.compact_ui;
+    ok = write_atomic(path, "compact_ui=1\n") && ok;
+    state = (State){0}; load_settings(); ok = ok && state.compact_ui;
+    ok = write_atomic(path, "compact_ui=invalid\n") && ok;
+    state = (State){0}; load_settings(); ok = ok && state.compact_ui;
     remove_test_tree(temporary);
     printf("NoteMD settings self-test: %s\n", ok ? "OK" : "FALHOU"); return ok ? 0 : 1;
 }

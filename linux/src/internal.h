@@ -123,6 +123,7 @@ typedef struct {
     bool split_origin;
     bool sidebar_hidden;
     bool autosave;
+    bool compact_ui;
     bool force_quit;
     bool ui_test;
     bool empty_ui_test;
@@ -148,6 +149,7 @@ extern State state;
 
 #define FN(ret, name, args) extern ret (*name) args
 FN(Ptr, gtk_application_new, (const char *, int));
+FN(unsigned, gtk_get_minor_version, (void));
 FN(int, g_application_run, (Ptr, int, char **));
 FN(void, g_application_quit, (Ptr));
 FN(void, g_object_unref, (Ptr));
@@ -156,6 +158,9 @@ FN(void, g_object_set, (Ptr, const char *, ...));
 FN(void, g_object_get, (Ptr, const char *, ...));
 FN(Ptr, g_object_bind_property, (Ptr, const char *, Ptr, const char *, int));
 FN(Ptr, gtk_settings_get_default, (void));
+FN(Ptr, gtk_switch_new, (void));
+FN(void, gtk_switch_set_active, (Ptr, gboolean));
+FN(gboolean, gtk_switch_get_active, (Ptr));
 FN(unsigned long, g_signal_connect_data, (Ptr, const char *, void *, Ptr, void *, int));
 FN(void, g_signal_emit_by_name, (Ptr, const char *, ...));
 FN(Ptr, gtk_application_window_new, (Ptr));
@@ -656,6 +661,7 @@ void export_notebook_response(Ptr dialog, int response, Ptr user_data);
 void export_selected_notebook(Ptr button, Ptr user_data);
 void import_notebook_response(Ptr dialog, int response, Ptr unused);
 void import_notebook(Ptr button, Ptr unused);
+void compact_ui_changed(Ptr toggle, Ptr unused, Ptr user_data);
 void show_preferences(Ptr button, Ptr unused);
 void rename_notebook_apply(Ptr button, Ptr user_data);
 void rename_selected_notebook(Ptr button, Ptr unused);

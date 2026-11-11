@@ -8,6 +8,12 @@ const char *tr(const char *pt) {
         {"Biblioteca", "Library", "Bibliothèque"}, {"Menu da aplicação", "Application menu", "Menu de l’application"},
         {"Claro", "Light", "Clair"}, {"Escuro", "Dark", "Sombre"},
         {"Tamanho do texto", "Text size", "Taille du texte"},
+        {"Aparência", "Appearance", "Apparence"},
+        {"Armazenamento", "Storage", "Stockage"},
+        {"Pasta das notas", "Notes folder", "Dossier des notes"},
+        {"Interface compacta", "Compact interface", "Interface compacte"},
+        {"Reduz a fonte dos menus e controlos; não altera o editor.", "Smaller text in menus and controls; does not change the editor.", "Réduit le texte des menus et des contrôles ; ne modifie pas l’éditeur."},
+        {"A mudança de idioma é aplicada ao reiniciar.", "Language changes take effect after restarting.", "Le changement de langue est appliqué au redémarrage."},
         {"Editor e pré-visualização", "Editor and preview", "Éditeur et aperçu"},
         {"Aumentar: Ctrl++   ·   Diminuir: Ctrl+−   ·   Repor: Ctrl+0", "Larger: Ctrl++   ·   Smaller: Ctrl+−   ·   Reset: Ctrl+0", "Agrandir : Ctrl++   ·   Réduire : Ctrl+−   ·   Réinitialiser : Ctrl+0"},
         {"Sem resultados", "No results", "Aucun résultat"},
@@ -116,6 +122,7 @@ const char *tr(const char *pt) {
 
 #define FN(ret, name, args) ret (*name) args
 FN(Ptr, gtk_application_new, (const char *, int));
+FN(unsigned, gtk_get_minor_version, (void));
 FN(int, g_application_run, (Ptr, int, char **));
 FN(void, g_application_quit, (Ptr));
 FN(void, g_object_unref, (Ptr));
@@ -124,6 +131,9 @@ FN(void, g_object_set, (Ptr, const char *, ...));
 FN(void, g_object_get, (Ptr, const char *, ...));
 FN(Ptr, g_object_bind_property, (Ptr, const char *, Ptr, const char *, int));
 FN(Ptr, gtk_settings_get_default, (void));
+FN(Ptr, gtk_switch_new, (void));
+FN(void, gtk_switch_set_active, (Ptr, gboolean));
+FN(gboolean, gtk_switch_get_active, (Ptr));
 FN(unsigned long, g_signal_connect_data, (Ptr, const char *, void *, Ptr, void *, int));
 FN(void, g_signal_emit_by_name, (Ptr, const char *, ...));
 FN(Ptr, gtk_application_window_new, (Ptr));
@@ -468,8 +478,9 @@ void load_gtk(void) {
     LOAD(gtk_source_buffer_set_style_scheme); LOAD(gtk_source_buffer_get_style_scheme); LOAD(gtk_source_language_manager_get_default); LOAD(gtk_source_language_manager_prepend_search_path);
     LOAD(gtk_source_language_manager_get_language); LOAD(gtk_source_style_scheme_manager_get_default); LOAD(gtk_source_style_scheme_manager_prepend_search_path); LOAD(gtk_source_style_scheme_manager_get_scheme);
     LOAD(gtk_source_style_scheme_get_style); LOAD(gtk_text_iter_get_tags); LOAD(gtk_text_iter_get_offset); LOAD(gtk_text_iter_forward_to_tag_toggle); LOAD(gtk_text_buffer_apply_tag); LOAD(g_slist_free); LOAD(gdk_rgba_free);
-    LOAD(gtk_application_new); LOAD(g_application_run); LOAD(g_application_quit); LOAD(g_object_unref); LOAD(g_object_ref); LOAD(g_object_set);
+    LOAD(gtk_application_new); LOAD(gtk_get_minor_version); LOAD(g_application_run); LOAD(g_application_quit); LOAD(g_object_unref); LOAD(g_object_ref); LOAD(g_object_set);
     LOAD(g_object_get); LOAD(gtk_settings_get_default);
+    LOAD(gtk_switch_new); LOAD(gtk_switch_set_active); LOAD(gtk_switch_get_active);
     LOAD(g_signal_connect_data); LOAD(g_signal_emit_by_name); LOAD(gtk_application_window_new); LOAD(gtk_window_new);
     LOAD(gtk_window_set_transient_for); LOAD(gtk_window_set_modal); LOAD(gtk_window_set_title);
     LOAD(gtk_window_destroy);
@@ -643,8 +654,8 @@ void save_settings(void) {
     size_t size = PATH_MAX + 256;
     for (Note *note = state.notes; note; note = note->next) if (note->external) size += strlen(note->markdown_path) + 12;
     char *contents = calloc(size, 1); size_t used = (size_t)snprintf(contents, size,
-        "root=%s\ntheme=%s\nlanguage=%s\nautosave=%d\neditor_font_size=%d\n", state.root, state.theme, state.language,
-        state.autosave ? 1 : 0, state.editor_font_size);
+        "root=%s\ntheme=%s\nlanguage=%s\nautosave=%d\neditor_font_size=%d\ncompact_ui=%d\n", state.root, state.theme, state.language,
+        state.autosave ? 1 : 0, state.editor_font_size, state.compact_ui ? 1 : 0);
     for (Note *note = state.notes; note && used < size; note = note->next) if (note->external)
         used += (size_t)snprintf(contents + used, size - used, "external=%s\n", note->markdown_path);
     write_atomic(path, contents); free(contents);
@@ -654,6 +665,7 @@ void load_settings(void) {
     snprintf(state.theme, sizeof state.theme, "system");
     snprintf(state.language, sizeof state.language, "pt");
     state.autosave = true;
+    state.compact_ui = true;
     state.editor_font_size = EDITOR_FONT_DEFAULT;
     char path[PATH_MAX]; config_path(path); char *contents = read_file(path), *line = contents;
     while (line && *line) {
@@ -662,6 +674,8 @@ void load_settings(void) {
         else if (strncmp(line, "theme=", 6) == 0 && line[6])
             snprintf(state.theme, sizeof state.theme, "%s", line + 6);
         else if (strncmp(line, "autosave=", 9) == 0) state.autosave = line[9] != '0';
+        else if (strcmp(line, "compact_ui=0") == 0) state.compact_ui = false;
+        else if (strcmp(line, "compact_ui=1") == 0) state.compact_ui = true;
         else if (strncmp(line, "language=", 9) == 0 && line[9]) snprintf(state.language, sizeof state.language, "%s", line + 9);
         else if (strncmp(line, "editor_font_size=", 17) == 0) {
             char *end; long size = strtol(line + 17, &end, 10);
@@ -676,11 +690,18 @@ void load_settings(void) {
 }
 
 bool is_system_dark(void) {
-    gboolean prefer_dark = false;
     Ptr settings = gtk_settings_get_default ? gtk_settings_get_default() : NULL;
     if (settings) {
-        g_object_get(settings, "gtk-application-prefer-dark-theme", &prefer_dark, NULL);
-        if (prefer_dark) return true;
+        if (gtk_get_minor_version() >= 20) {
+            int color_scheme = 0;
+            g_object_get(settings, "gtk-interface-color-scheme", &color_scheme, NULL);
+            if (color_scheme == 2) return true;  /* GTK_INTERFACE_COLOR_SCHEME_DARK */
+            if (color_scheme == 3) return false; /* GTK_INTERFACE_COLOR_SCHEME_LIGHT */
+        } else {
+            gboolean prefer_dark = false;
+            g_object_get(settings, "gtk-application-prefer-dark-theme", &prefer_dark, NULL);
+            if (prefer_dark) return true;
+        }
         char *theme_name = NULL;
         g_object_get(settings, "gtk-theme-name", &theme_name, NULL);
         if (theme_name) {
@@ -792,6 +813,7 @@ void apply_theme(const char *theme) {
     int font = state.editor_font_size;
     if (font < EDITOR_FONT_MIN || font > EDITOR_FONT_MAX) font = EDITOR_FONT_DEFAULT;
     snprintf(typography, sizeof typography,
+        "window { font-size: %dpx; }\n"
         ".notemd-window textview, .notemd-window textview text, "
         ".notemd-window textview.markdown-source, .notemd-window textview.markdown-source text, "
         ".notemd-window textview.line-numbers, .notemd-window textview.line-numbers text, "
@@ -799,7 +821,7 @@ void apply_theme(const char *theme) {
         ".notemd-window textview.preview, .notemd-window textview.preview text { font-size: %dpx; }\n"
         ".notemd-window .block-card textview.block-code, .notemd-window .block-card textview.block-code text { font-size: %dpx; }\n"
         ".notemd-window .block-card textview.block-heading, .notemd-window .block-card textview.block-heading text { font-size: %dpx; }\n",
-        font, font + 1, font, font + 4);
+        state.compact_ui ? 12 : 14, font, font + 1, font, font + 4);
     /* Saturated library colors, with separate values for readable light/dark text. */
     const char *library_colors = source_is_light() ?
         "@define-color notemd_red #d50032;\n@define-color notemd_orange #b83b00;\n"
@@ -808,14 +830,17 @@ void apply_theme(const char *theme) {
         "@define-color notemd_red #ff3159;\n@define-color notemd_orange #ff8717;\n"
         "@define-color notemd_yellow #ffcc00;\n@define-color notemd_green #0ede67;\n"
         "@define-color notemd_blue #3994ff;\n@define-color notemd_purple #b065ff;\n";
-    /* Context menus deliberately use neutral surfaces, independent of desktop accents. */
-    const char *menu_colors = source_is_light() ?
-        "@define-color notemd_menu_surface #ffffff;\n@define-color notemd_menu_fg #303030;\n"
-        "@define-color notemd_menu_border #dddddd;\n@define-color notemd_menu_hover #f0f0f0;\n"
-        "@define-color notemd_menu_muted #666666;\n" :
-        "@define-color notemd_menu_surface #252525;\n@define-color notemd_menu_fg #f0f0f0;\n"
-        "@define-color notemd_menu_border #454545;\n@define-color notemd_menu_hover #353535;\n"
-        "@define-color notemd_menu_muted #b6b6b6;\n";
+    /* The system palette inherits native menu colors; custom palettes use neutral surfaces. */
+    const char *menu_colors = "";
+    if (strcmp(theme, "system") != 0) {
+        menu_colors = source_is_light() ?
+            "@define-color notemd_menu_surface #ffffff;\n@define-color notemd_menu_fg #303030;\n"
+            "@define-color notemd_menu_border #dddddd;\n@define-color notemd_menu_hover #f0f0f0;\n"
+            "@define-color notemd_menu_muted #666666;\n" :
+            "@define-color notemd_menu_surface #252525;\n@define-color notemd_menu_fg #f0f0f0;\n"
+            "@define-color notemd_menu_border #454545;\n@define-color notemd_menu_hover #353535;\n"
+            "@define-color notemd_menu_muted #b6b6b6;\n";
+    }
     size_t combined_len = theme_len + style_len + strlen(library_colors) + strlen(menu_colors) + strlen(typography) + 16;
     char *combined = malloc(combined_len);
     snprintf(combined, combined_len, "%s\n%s\n%s\n%s\n%s", style_css ? style_css : "", theme_css ? theme_css : "", library_colors, menu_colors, typography);
@@ -837,17 +862,15 @@ void apply_theme(const char *theme) {
     free(combined);
 
     Ptr settings = gtk_settings_get_default ? gtk_settings_get_default() : NULL;
-    if (settings) {
-        gboolean prefer_dark = false;
-        if (strcmp(theme, "system") == 0) {
-            prefer_dark = is_system_dark();
-        } else if (strcmp(theme, "black") == 0 || strcmp(theme, "dracula") == 0 ||
-                   strcmp(theme, "monokai") == 0 || strcmp(theme, "tokyo-night") == 0) {
-            prefer_dark = true;
+    if (settings && strcmp(theme, "system") != 0) {
+        gboolean prefer_dark = strcmp(theme, "black") == 0 || strcmp(theme, "dracula") == 0 ||
+            strcmp(theme, "monokai") == 0 || strcmp(theme, "tokyo-night") == 0;
+        if (gtk_get_minor_version() >= 20) {
+            /* GtkInterfaceColorScheme: DARK = 2, LIGHT = 3. */
+            g_object_set(settings, "gtk-interface-color-scheme", prefer_dark ? 2 : 3, NULL);
         } else {
-            prefer_dark = false;
+            g_object_set(settings, "gtk-application-prefer-dark-theme", prefer_dark, NULL);
         }
-        g_object_set(settings, "gtk-application-prefer-dark-theme", prefer_dark, NULL);
     }
 
     apply_syntax_theme();

@@ -684,16 +684,50 @@ void import_notebook(Ptr button, Ptr unused) {
     g_signal_connect_data(dialog, "response", (void *)import_notebook_response, NULL, NULL, 0); gtk_native_dialog_show(dialog);
 }
 
+void compact_ui_changed(Ptr toggle, Ptr unused, Ptr user_data) {
+    (void)unused; (void)user_data;
+    state.compact_ui = gtk_switch_get_active(toggle);
+    apply_theme(state.theme);
+}
+
+static Ptr preferences_section(Ptr parent, const char *title) {
+    Ptr section = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    gtk_widget_add_css_class(section, "preferences-section");
+    Ptr label = gtk_label_new(tr(title)); gtk_label_set_xalign(label, 0.0f);
+    gtk_widget_add_css_class(label, "preferences-section-title");
+    gtk_box_append(section, label); gtk_box_append(parent, section);
+    return section;
+}
+
 void show_preferences(Ptr button, Ptr unused) {
     (void)button; (void)unused;
     Ptr window = gtk_window_new(); gtk_window_set_title(window, tr("Preferências"));
-    gtk_window_set_default_size(window, 540, 400); gtk_window_set_transient_for(window, state.window);
-    gtk_window_set_modal(window, true);
-    Ptr box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10); margins(box, 20, 20);
-    Ptr heading = gtk_label_new(tr("Aparência e armazenamento")); gtk_label_set_xalign(heading, 0.0f);
+    gtk_window_set_default_size(window, 580, 640); gtk_window_set_transient_for(window, state.window);
+    gtk_window_set_modal(window, true); gtk_widget_add_css_class(window, "preferences-window");
+    Ptr box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 16); margins(box, 20, 20);
+    Ptr heading = gtk_label_new(tr("Preferências")); gtk_label_set_xalign(heading, 0.0f);
     gtk_widget_add_css_class(heading, "history-title"); gtk_box_append(box, heading);
-    Ptr storage_label = gtk_label_new("Pasta das notas"); gtk_label_set_xalign(storage_label, 0.0f);
-    gtk_widget_add_css_class(storage_label, "settings-label"); gtk_box_append(box, storage_label);
+    Ptr appearance = preferences_section(box, "Aparência");
+    Ptr compact_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+    gtk_widget_add_css_class(compact_row, "preferences-row");
+    Ptr compact_labels = gtk_box_new(GTK_ORIENTATION_VERTICAL, 3);
+    Ptr compact_label = gtk_label_new(tr("Interface compacta")); gtk_label_set_xalign(compact_label, 0.0f);
+    Ptr compact_description = gtk_label_new(tr("Reduz a fonte dos menus e controlos; não altera o editor."));
+    gtk_label_set_xalign(compact_description, 0.0f); gtk_label_set_wrap(compact_description, true);
+    gtk_widget_add_css_class(compact_description, "settings-description");
+    gtk_box_append(compact_labels, compact_label); gtk_box_append(compact_labels, compact_description);
+    gtk_widget_set_hexpand(compact_labels, true); gtk_box_append(compact_row, compact_labels);
+    Ptr compact = gtk_switch_new(); gtk_switch_set_active(compact, state.compact_ui);
+    gtk_widget_set_valign(compact, GTK_ALIGN_CENTER);
+    gtk_widget_set_tooltip_text(compact, tr("Interface compacta"));
+    g_signal_connect_data(compact, "notify::active", (void *)compact_ui_changed, NULL, NULL, 0);
+    gtk_box_append(compact_row, compact); gtk_box_append(appearance, compact_row);
+    Ptr storage_section = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    gtk_widget_add_css_class(storage_section, "preferences-section");
+    Ptr storage_heading = gtk_label_new(tr("Armazenamento")); gtk_label_set_xalign(storage_heading, 0.0f);
+    gtk_widget_add_css_class(storage_heading, "preferences-section-title"); gtk_box_append(storage_section, storage_heading);
+    Ptr storage_label = gtk_label_new(tr("Pasta das notas")); gtk_label_set_xalign(storage_label, 0.0f);
+    gtk_widget_add_css_class(storage_label, "settings-label"); gtk_box_append(storage_section, storage_label);
     Ptr storage = gtk_label_new(state.root); gtk_label_set_xalign(storage, 0.0f);
     gtk_label_set_ellipsize(storage, 1); gtk_label_set_max_width_chars(storage, 54);
     gtk_widget_set_tooltip_text(storage, state.root);
@@ -702,13 +736,12 @@ void show_preferences(Ptr button, Ptr unused) {
     gtk_widget_set_hexpand(storage, true); gtk_box_append(storage_row, storage);
     Ptr change = icon_button("folder-open-symbolic", tr("Selecionar pasta das notas…"));
     g_signal_connect_data(change, "clicked", (void *)choose_folder, NULL, NULL, 0);
-    gtk_box_append(storage_row, change); gtk_box_append(box, storage_row);
+    gtk_box_append(storage_row, change); gtk_box_append(storage_section, storage_row);
     Ptr autosave = gtk_check_button_new_with_label(tr("Gravação automática"));
     gtk_check_button_set_active(autosave, state.autosave);
-    g_signal_connect_data(autosave, "toggled", (void *)autosave_changed, NULL, NULL, 0); gtk_box_append(box, autosave);
-    gtk_box_append(box, gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
+    g_signal_connect_data(autosave, "toggled", (void *)autosave_changed, NULL, NULL, 0); gtk_box_append(storage_section, autosave);
     Ptr themes_label = gtk_label_new(tr("Tema do editor")); gtk_label_set_xalign(themes_label, 0.0f);
-    gtk_widget_add_css_class(themes_label, "settings-label"); gtk_box_append(box, themes_label);
+    gtk_widget_add_css_class(themes_label, "settings-label"); gtk_box_append(appearance, themes_label);
     static const char *theme_ids[] = {"white", "black", "system", "monokai", "tokyo-night", "dracula", "solarized-light", "catppuccin-latte"};
     const char *theme_labels[] = {tr("Claro"), tr("Escuro"), tr("Sistema"), "Monokai", "Tokyo Night", "Dracula", "Solarized Light", "Catppuccin Latte"};
     Ptr theme_rows = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5); Ptr row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
@@ -728,9 +761,10 @@ void show_preferences(Ptr button, Ptr unused) {
         gtk_box_append(tile, sample); gtk_box_append(tile, gtk_label_new(theme_labels[index])); gtk_button_set_child(choice, tile);
         gtk_widget_add_css_class(choice, strcmp(state.theme, theme_ids[index]) == 0 ? "selected-setting" : "setting-choice");
         g_signal_connect_data(choice, "clicked", (void *)choose_theme, (Ptr)theme_ids[index], NULL, 0);
-        gtk_box_append(row, choice);
+        gtk_widget_set_hexpand(choice, true); gtk_box_append(row, choice);
     }
-    gtk_box_append(theme_rows, row); gtk_box_append(box, theme_rows);
+    gtk_box_append(theme_rows, row); gtk_box_append(appearance, theme_rows);
+    Ptr editor_section = preferences_section(box, "Editor");
     Ptr font_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
     Ptr font_labels = gtk_box_new(GTK_ORIENTATION_VERTICAL, 3);
     Ptr font_label = gtk_label_new(tr("Tamanho do texto")); gtk_label_set_xalign(font_label, 0.0f);
@@ -744,11 +778,10 @@ void show_preferences(Ptr button, Ptr unused) {
     gtk_drop_down_set_selected(font_choice, (guint)(state.editor_font_size - EDITOR_FONT_MIN));
     gtk_widget_set_tooltip_text(font_choice, tr("Tamanho do texto"));
     g_signal_connect_data(font_choice, "notify::selected", (void *)editor_font_changed, NULL, NULL, 0);
-    gtk_box_append(font_row, font_choice); gtk_box_append(box, font_row);
+    gtk_box_append(font_row, font_choice); gtk_box_append(editor_section, font_row);
     Ptr font_hint = gtk_label_new(tr("Aumentar: Ctrl++   ·   Diminuir: Ctrl+−   ·   Repor: Ctrl+0"));
-    gtk_label_set_xalign(font_hint, 0.0f); gtk_widget_add_css_class(font_hint, "shortcut-hint"); gtk_box_append(box, font_hint);
-    Ptr language_label = gtk_label_new("Idioma / Language / Langue"); gtk_label_set_xalign(language_label, 0.0f);
-    gtk_widget_add_css_class(language_label, "settings-label"); gtk_box_append(box, language_label);
+    gtk_label_set_xalign(font_hint, 0.0f); gtk_widget_add_css_class(font_hint, "shortcut-hint"); gtk_label_set_wrap(font_hint, true); gtk_box_append(editor_section, font_hint);
+    Ptr language_section = preferences_section(box, "Idioma / Language / Langue");
     Ptr languages = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
     static const char *lang_ids[] = {"pt", "en", "fr"};
     const char *lang_labels[] = {"Português", "English", "Français"};
@@ -758,7 +791,11 @@ void show_preferences(Ptr button, Ptr unused) {
         g_signal_connect_data(choice, "clicked", (void *)language_changed, (Ptr)lang_ids[index], NULL, 0);
         gtk_box_append(languages, choice);
     }
-    gtk_box_append(box, languages);
+    gtk_box_append(language_section, languages);
+    Ptr language_hint = gtk_label_new(tr("A mudança de idioma é aplicada ao reiniciar."));
+    gtk_label_set_xalign(language_hint, 0.0f); gtk_label_set_wrap(language_hint, true);
+    gtk_widget_add_css_class(language_hint, "settings-description"); gtk_box_append(language_section, language_hint);
+    gtk_box_append(box, storage_section);
     Ptr scroll = gtk_scrolled_window_new();
     gtk_scrolled_window_set_policy(scroll, GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
     gtk_scrolled_window_set_child(scroll, box); gtk_window_set_child(window, scroll); gtk_window_present(window);

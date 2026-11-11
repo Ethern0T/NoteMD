@@ -1,6 +1,6 @@
 # NoteMD para Linux (GTK 4)
 
-Implementação nativa compilada em C17 com GTK 4 para Linux.
+Implementação nativa compilada em C17 com GTK 4 para Linux. Usa o backend GDK disponível na sessão e é compatível com Wayland e X11.
 
 ## Compilar e Executar
 
@@ -90,6 +90,12 @@ com `python3 tools/generate-syntax.py`.
 
 ## Leitura e navegação
 
+Em **Preferências → Aparência**, o toggle **Interface compacta** define o tamanho do texto da interface:
+ligado (predefinição), usa **12 px**; desligado, usa **14 px**. A escolha fica guardada para a próxima sessão.
+O tamanho é aplicado dinamicamente por `core.c` com `window { font-size: 12px; }` ou
+`window { font-size: 14px; }`, sem um tamanho fixo em `style.css`. Esta opção não afeta o editor.
+As preferências estão organizadas em secções agrupadas.
+
 A fonte do editor começa em 16 px. Pode ser ajustada entre 12 e 24 px em **Preferências → Tamanho do texto**;
 a escolha é aplicada ao editor, aos blocos visuais e à pré-visualização e fica guardada para a próxima sessão.
 
@@ -131,12 +137,14 @@ com ajustes de contraste no texto de sintaxe. Também está incluído na instala
 
 Na biblioteca, a cor atribuída a cada caderno ou nota aparece no próprio título, incluindo na seleção.
 Os tons saturados acompanham o tema para manter a leitura, tanto nos títulos como nos ícones.
-Os nomes usam Noto Sans, com alternativa DejaVu Sans, independentemente da fonte do ambiente de trabalho.
+Os nomes e os restantes controlos da interface herdam a família configurada no GTK e usam o tamanho escolhido em **Interface compacta**; o tamanho do conteúdo do editor é ajustado separadamente nas preferências.
 Ícones distinguem cadernos e notas, as ações aparecem
 ao passar o rato ou navegar com o teclado, e as contagens de tags ficam alinhadas à direita.
 O painel usa uma superfície derivada da paleta ativa, com seleção neutra. Os menus da biblioteca e
-da aplicação também usam realces neutros ao passar o rato, clicar ou navegar com o teclado.
-O menu de contexto da biblioteca tem uma superfície neutra própria, sem degradês do ambiente de trabalho,
+da aplicação também usam realces neutros e planos ao passar o rato, clicar ou navegar com o teclado,
+com indicadores de foco acessíveis. Todos os popovers, incluindo conteúdos, setas e controlos internos,
+usam estilos sem sombras, gradientes, transições ou animações CSS, preservando as amostras de cores.
+O menu de contexto da biblioteca tem uma superfície neutra própria,
 abre junto ao ponto clicado e mostra cores sólidas com indicação da cor escolhida. A aplicação arranca com a
 biblioteca oculta e os cadernos recolhidos; o botão da biblioteca ou `Ctrl+B` mostra o painel.
 

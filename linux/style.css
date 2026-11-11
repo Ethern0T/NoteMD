@@ -29,7 +29,6 @@
 window {
   background: @notemd_chrome;
   color: @theme_fg_color;
-  font-size: 14px;
 }
 
 button { border-radius: 5px; }
@@ -51,7 +50,7 @@ button.icon-button:disabled { opacity: .4; }
   border-bottom: 1px solid @notemd_border;
   box-shadow: none;
 }
-.brand { font-size: 14px; font-weight: 650; }
+.brand { font-weight: 650; }
 .app-header button.icon-button, menubutton.workspace-menu > button {
   min-width: 28px;
   min-height: 28px;
@@ -78,7 +77,7 @@ button.icon-button:disabled { opacity: .4; }
   box-shadow: none;
 }
 .sidebar-actions { padding: 10px 12px 5px; }
-.library-title { font-size: 15px; font-weight: 650; }
+.library-title { font-weight: 650; }
 .sidebar-actions button.icon-button { background: transparent; }
 .sidebar-actions button.icon-button:hover { background: @notemd_hover; }
 .sidebar-panel searchentry {
@@ -89,16 +88,15 @@ button.icon-button:disabled { opacity: .4; }
   border: 1px solid @notemd_border;
   border-radius: 7px;
   box-shadow: none;
-  font-size: 14px;
 }
 .library-tree { padding: 0 8px 8px; }
 .section-title, .settings-label, .context-section {
   color: @notemd_muted;
-  font-size: 12px;
+  font-size: 0.86em;
   font-weight: 600;
 }
-.storage-path { color: @notemd_faint; font-size: 12px; }
-.empty-message { color: @notemd_muted; font-size: 14px; }
+.storage-path { color: @notemd_faint; font-size: 0.86em; }
+.empty-message { color: @notemd_muted; }
 .library-tree button, .tags-section button {
   min-height: 28px;
   padding: 1px 7px;
@@ -108,21 +106,18 @@ button.icon-button:disabled { opacity: .4; }
   border: 0;
   border-radius: 5px;
   box-shadow: none;
-  font-size: 14px;
 }
 .library-tree button:hover, .tags-section button:hover { background: @notemd_hover; }
-/* Use a UI face instead of inheriting the desktop's programming font. */
 .library-tree button.notebook-title, .library-tree button.sidebar-note, .tabbar {
-  font-family: "Noto Sans", "DejaVu Sans", sans-serif;
   font-style: normal;
   letter-spacing: 0;
 }
-.library-tree button.notebook-title { font-size: 15px; font-weight: 700; }
+.library-tree button.notebook-title { font-weight: 700; }
 .notebook-tree { margin-bottom: 6px; }
 .notebook-tree > title { min-height: 32px; }
 .notebook-tree > title > expander { color: @notemd_faint; }
 .tree-children { margin-left: 24px; }
-.library-tree button.sidebar-note { min-height: 30px; padding: 1px 7px; font-size: 15px; }
+.library-tree button.sidebar-note { min-height: 30px; padding: 1px 7px; }
 .library-tree button.notebook-title image, .library-tree button.sidebar-note image {
   -gtk-icon-size: 16px;
   color: @notemd_faint;
@@ -152,11 +147,11 @@ button.icon-button:disabled { opacity: .4; }
 .library-tree button.item-menu:focus-visible,
 .library-tree button.item-menu:active { opacity: 1; }
 .library-tree button.empty-action { color: @notemd_muted; }
-.tags-section > title { min-height: 24px; color: @notemd_muted; font-size: 12px; font-weight: 600; }
+.tags-section > title { min-height: 24px; color: @notemd_muted; font-size: 0.86em; font-weight: 600; }
 .tags-section { border-top: 1px solid @notemd_border; padding-top: 8px; }
 .tags-section > box { padding-top: 4px; }
 .tags-section button image { -gtk-icon-size: 14px; color: @notemd_faint; }
-.tags-section .tag-count { font-size: 12px; font-weight: 400; color: @notemd_muted; padding-left: 6px; }
+.tags-section .tag-count { font-size: 0.86em; font-weight: 400; color: @notemd_muted; padding-left: 6px; }
 
 /* Color titles and their icons, including hover and selection; actions stay neutral. */
 .library-tree button.color-red label, .library-tree button.notebook-title.color-red image, .library-tree button.sidebar-note.color-red image, popover.library-menu .context-title.color-red, popover.library-menu .context-header.color-red image { color: @notemd_red; }
@@ -180,7 +175,6 @@ button.icon-button:disabled { opacity: .4; }
   border: 0;
   border-radius: 4px;
   box-shadow: none;
-  font-size: 14px;
 }
 .tabbar entry.tab-title { color: @theme_fg_color; font-weight: 600; }
 .tabbar entry.tab-title.editing-title:focus-within { box-shadow: inset 0 -1px @notemd_faint; }
@@ -200,7 +194,6 @@ button.icon-button:disabled { opacity: .4; }
   padding: 7px 10px;
   background: @notemd_paper;
   border-bottom: 1px solid @notemd_border;
-  font-family: "Noto Sans", "DejaVu Sans", sans-serif;
 }
 .format-tools { padding: 0 3px 0 0; }
 .format-group {
@@ -225,16 +218,15 @@ button.icon-button:disabled { opacity: .4; }
   background: @notemd_navigation_selection;
 }
 .formatbar button.icon-button:active { background: @notemd_navigation_selection; }
-.formatbar button.code-format { font-family: monospace; font-size: 13px; font-weight: 600; }
+.formatbar button.code-format { font-family: monospace; font-weight: 600; }
 .formatbar scrolledwindow, .formatbar viewport { background: transparent; border: 0; box-shadow: none; }
 .formatbar menubutton.heading-selector > button {
   min-width: 108px;
   padding: 1px 9px;
-  font-size: 13px;
   font-weight: 600;
 }
 .heading-menu button.heading-option { min-width: 210px; min-height: 32px; padding: 5px 9px; }
-.heading-menu .heading-badge { min-width: 27px; font-size: 12px; font-weight: 600; color: @notemd_muted; }
+.heading-menu .heading-badge { min-width: 27px; font-size: 0.86em; font-weight: 600; color: @notemd_muted; }
 .heading-menu .heading-preview { font-size: 14px; font-weight: 600; }
 .heading-menu .heading-level-0 .heading-preview { font-weight: 400; }
 .heading-menu .heading-level-1 .heading-preview { font-size: 22px; }
@@ -319,7 +311,7 @@ textview.preview, textview.preview text { font-family: sans-serif; font-size: 17
   color: @theme_fg_color;
   border: 0;
   box-shadow: none;
-  font-size: 12px;
+  font-size: 0.86em;
 }
 .linksbar button.missing-link { border: 1px dashed @notemd_border; background: transparent; }
 
@@ -335,7 +327,7 @@ textview.preview, textview.preview text { font-family: sans-serif; font-size: 17
 }
 .block-card:hover { border-color: @notemd_border; }
 .block-card:focus-within { border-color: alpha(@notemd_accent, .45); }
-.block-kind { color: @notemd_faint; font-size: 12px; font-weight: 500; }
+.block-kind { color: @notemd_faint; font-size: 0.86em; font-weight: 500; }
 .block-card textview, .block-card textview text { background: transparent; font-family: sans-serif; font-size: 16px; }
 .block-card textview { padding: 2px 4px; }
 .block-card textview.block-code, .block-card textview.block-code text { font-family: monospace; font-size: 16px; }
@@ -371,36 +363,36 @@ textview.preview, textview.preview text { font-family: sans-serif; font-size: 17
   border-left: 3px solid alpha(@notemd_accent, .60);
 }
 .quote-card textview, .quote-card textview text { color: @notemd_muted; font-style: italic; }
-.block-card dropdown > button { min-height: 22px; padding: 0 5px; font-size: 12px; }
-.block-card entry.code-language { min-height: 22px; padding: 0 6px; font-family: monospace; font-size: 12px; }
+.block-card dropdown > button { min-height: 22px; padding: 0 5px; font-size: 0.86em; }
+.block-card entry.code-language { min-height: 22px; padding: 0 6px; font-family: monospace; font-size: 0.86em; }
 .structured-line { padding: 0 4px 2px; }
 .list-marker { min-width: 16px; color: @notemd_accent; font-weight: 600; }
 .quote-marker { color: @notemd_accent; font-size: 18px; }
 .table-grid { padding: 4px 2px; }
-.table-grid entry { min-width: 70px; min-height: 28px; padding: 1px 5px; border-radius: 3px; font-size: 14px; }
+.table-grid entry { min-width: 70px; min-height: 28px; padding: 1px 5px; border-radius: 3px; }
 .table-grid entry.table-header-cell { font-weight: 600; background: @notemd_selection; }
 .visual-image { margin: 4px; border-radius: 5px; }
 .image-fields { padding: 2px 4px 4px; }
-.image-fields entry { min-height: 28px; padding: 1px 6px; font-size: 14px; }
-.image-fields entry.image-location { font-family: monospace; font-size: 12px; }
+.image-fields entry { min-height: 28px; padding: 1px 6px; }
+.image-fields entry.image-location { font-family: monospace; font-size: 0.86em; }
 .visual-divider { margin: 8px 4px; background: @notemd_border; }
 
 .statusbar { min-height: 28px; padding: 1px 12px; background: @notemd_chrome; border-top: 1px solid @notemd_border; }
-.status, .document-stats, .line-badge, .markdown-badge { color: @notemd_muted; font-size: 12px; }
+.status, .document-stats, .line-badge, .markdown-badge { color: @notemd_muted; font-size: 0.86em; }
 
 /* Menus and note metadata share the compact workspace rhythm. */
 popover { color: @theme_fg_color; }
 popover > contents { background: @notemd_paper; border: 1px solid @notemd_border; border-radius: 7px; }
 popover .notemd-context-menu { min-width: 220px; }
-popover .context-title { padding: 2px 5px 5px; font-size: 14px; font-weight: 650; }
+popover .context-title { padding: 2px 5px 5px; font-weight: 650; }
 popover .context-section { padding: 7px 5px 2px; }
-popover button.context-action { min-height: 30px; padding: 2px 7px; background: transparent; color: @theme_fg_color; border: 0; box-shadow: none; font-size: 14px; }
+popover button.context-action { min-height: 30px; padding: 2px 7px; background: transparent; color: @theme_fg_color; border: 0; box-shadow: none; }
 popover button.context-action:hover { background: @notemd_hover; }
 popover button.context-action.destructive-action { color: #d1242f; }
-.shortcut-hint { color: @notemd_faint; font-size: 12px; }
+.shortcut-hint { color: @notemd_faint; font-size: 0.86em; }
 .note-details { min-width: 260px; }
-.note-details entry { min-height: 28px; padding: 1px 7px; font-size: 14px; }
-button.tag-chip, button.external-chip { min-height: 23px; padding: 1px 7px; background: @notemd_selection; color: @theme_fg_color; border: 0; border-radius: 4px; box-shadow: none; font-size: 12px; }
+.note-details entry { min-height: 28px; padding: 1px 7px; }
+button.tag-chip, button.external-chip { min-height: 23px; padding: 1px 7px; background: @notemd_selection; color: @theme_fg_color; border: 0; border-radius: 4px; box-shadow: none; font-size: 0.86em; }
 button.external-chip { background: @notemd_hover; }
 .color-palette { padding: 3px 4px 6px; }
 button.color-swatch { min-width: 25px; min-height: 25px; padding: 2px; border: 1px solid @notemd_border; border-radius: 5px; box-shadow: none; }
@@ -420,23 +412,27 @@ button.color-swatch.color-purple { background: rgba(130, 80, 223, .13); }
 .welcome-page { padding: 12px; }
 .welcome-icon { color: @notemd_accent; margin-bottom: 4px; }
 .welcome-title { font-size: 22px; font-weight: 650; }
-.welcome-description { color: @notemd_muted; font-size: 14px; }
+.welcome-description { color: @notemd_muted; }
 .welcome-page > box { margin-top: 6px; margin-bottom: 4px; }
-.welcome-page button { min-height: 30px; padding: 3px 12px; font-size: 14px; }
+.welcome-page button { min-height: 30px; padding: 3px 12px; }
 .welcome-page button.suggested-action { background: @notemd_accent; color: @notemd_accent_fg; }
 
 .history-title { font-size: 18px; font-weight: 650; }
-.history-subtitle { color: @notemd_muted; font-size: 14px; }
+.history-subtitle { color: @notemd_muted; }
 .history-body { margin-top: 4px; }
 .history-list { background: @notemd_sidebar; }
 .history-column { padding: 0 8px 8px; }
-.history-column-title { padding: 5px 8px 2px; color: @notemd_muted; font-size: 12px; font-weight: 600; }
+.history-column-title { padding: 5px 8px 2px; color: @notemd_muted; font-size: 0.86em; font-weight: 600; }
 .history-row { min-height: 32px; padding: 3px 6px; background: @notemd_hover; border: 1px solid @notemd_border; border-radius: 5px; }
 .history-row button.icon-button, .history-row button.history-date { min-height: 28px; padding: 1px 5px; background: transparent; border: 0; box-shadow: none; }
-.history-row button.history-date label { font-size: 14px; }
+.history-row button.history-date label { font-size: inherit; }
 .history-current { border-color: alpha(@notemd_accent, .4); }
 textview.history-preview, textview.history-preview text { font-size: 16px; }
-button.setting-choice, button.selected-setting { min-height: 28px; padding: 3px 9px; font-size: 14px; }
+.preferences-window { background: @notemd_chrome; color: @theme_fg_color; }
+.preferences-section { padding: 12px; border: 1px solid @notemd_border; border-radius: 5px; }
+.preferences-section-title { font-weight: 700; }
+.preferences-row { padding: 4px 0; }
+button.setting-choice, button.selected-setting { min-height: 28px; padding: 3px 9px; }
 button.setting-choice { background: @notemd_paper; color: @theme_fg_color; border: 1px solid @notemd_border; }
 button.selected-setting { background: @notemd_selection; color: @theme_fg_color; border: 1px solid @notemd_accent; }
 button.setting-choice:hover { background: @notemd_hover; }
@@ -482,7 +478,7 @@ button:focus-visible, menubutton > button:focus-visible {
 .sidebar-panel searchentry:focus-within, .note-details entry:focus-within {
   border-color: alpha(@notemd_accent, .65);
 }
-.settings-description { color: @notemd_muted; font-size: 13px; }
+.settings-description { color: @notemd_muted; font-size: 0.93em; }
 
 /* Form fields use the chosen palette as well as the document canvas. */
 entry, searchentry, dropdown > button {
@@ -534,7 +530,6 @@ popover listview row:selected { background: @notemd_selection; color: @theme_fg_
   border: 0;
   outline: none;
   box-shadow: none;
-  font-family: "Noto Sans", "DejaVu Sans", sans-serif;
 }
 .notemd-window popover.library-menu > contents,
 .notemd-window popover.library-menu.background > contents {
@@ -545,14 +540,14 @@ popover listview row:selected { background: @notemd_selection; color: @theme_fg_
   border: 1px solid @notemd_menu_border;
   border-radius: 10px;
   outline: none;
-  box-shadow: 0 6px 18px alpha(black, .14);
+  box-shadow: none;
 }
 .notemd-window popover.library-menu > arrow { background: transparent; border: 0; box-shadow: none; }
 .notemd-window popover.library-menu .notemd-context-menu { min-width: 244px; }
 .notemd-window popover.library-menu .context-header { padding: 7px 9px 5px; }
 .notemd-window popover.library-menu .context-header image { -gtk-icon-size: 20px; }
-.notemd-window popover.library-menu .context-title { padding: 0; font-size: 15px; font-weight: 700; }
-.notemd-window popover.library-menu .context-section { padding: 3px 9px 0; color: @notemd_menu_muted; font-size: 11px; font-weight: 600; }
+.notemd-window popover.library-menu .context-title { padding: 0; font-weight: 700; }
+.notemd-window popover.library-menu .context-section { padding: 3px 9px 0; color: @notemd_menu_muted; font-size: 0.79em; font-weight: 600; }
 .notemd-window popover.library-menu separator { min-height: 1px; margin: 3px 7px; background: @notemd_menu_border; }
 .notemd-window popover.library-menu button.context-action,
 .notemd-window popover.library-menu button.context-action:focus {
@@ -565,7 +560,6 @@ popover listview row:selected { background: @notemd_selection; color: @theme_fg_
   border-radius: 6px;
   outline: none;
   box-shadow: none;
-  font-size: 13px;
 }
 .notemd-window popover.library-menu button.context-action image { color: @notemd_menu_muted; -gtk-icon-size: 16px; }
 .notemd-window popover.library-menu button.context-action:hover,
@@ -597,8 +591,29 @@ popover listview row:selected { background: @notemd_selection; color: @theme_fg_
 .notemd-window popover.library-menu button.color-swatch.color-purple { background: @notemd_purple; }
 .notemd-window popover.library-menu button.color-swatch:hover,
 .notemd-window popover.library-menu button.color-swatch:focus-visible { outline: 2px solid @notemd_menu_muted; outline-offset: 2px; }
-.notemd-window popover.library-menu button.color-swatch.chosen-color { box-shadow: 0 0 0 2px @notemd_menu_surface, 0 0 0 3px @notemd_menu_muted; }
+.notemd-window popover.library-menu button.color-swatch.chosen-color { border-color: @notemd_menu_muted; }
 .notemd-window .notebook-tree > title,
 .notemd-window .notebook-tree > title:focus,
 .notemd-window .notebook-tree > title:focus-within { background: transparent; border: 0; outline: none; box-shadow: none; }
 .notemd-window .notebook-tree:focus-visible > title { outline: 1px solid @notemd_faint; outline-offset: -2px; border-radius: 5px; }
+
+/* Keep every popover flat without replacing swatch colors or focus outlines. */
+popover,
+popover > contents,
+popover > arrow,
+popover * {
+  box-shadow: none;
+  text-shadow: none;
+  -gtk-icon-shadow: none;
+  background-image: none;
+  transition: none;
+  animation: none;
+}
+popover button:not(.color-swatch):hover,
+popover modelbutton:hover,
+popover listview row:hover { background-color: @notemd_menu_hover; }
+popover modelbutton:focus-visible,
+popover listview row:focus-visible {
+  outline: 2px solid @notemd_menu_muted;
+  outline-offset: -2px;
+}
